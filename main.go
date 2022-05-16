@@ -51,7 +51,7 @@ func listenForCtrlC() {
 func eventHandler(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Message:
-		if v.Info.MediaType == "image" && strings.ToLower(v.Message.ImageMessage.GetCaption()) == "stickerize" {
+		if v.Info.MediaType == "image" && strings.ToLower(v.Message.ImageMessage.GetCaption()) == "stickerize deven96" {
 			// Download Image
 			image := v.Message.GetImageMessage()
 			data, err := client.Download(image)
