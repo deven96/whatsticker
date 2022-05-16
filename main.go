@@ -93,6 +93,9 @@ func eventHandler(evt interface{}) {
 				return
 			}
 
+			os.Remove(path)
+			os.Remove(outputPath)
+
 			// Send WebP as sticker
 			msg := &waProto.Message{
 				StickerMessage: &waProto.StickerMessage{
