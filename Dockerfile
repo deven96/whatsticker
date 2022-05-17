@@ -5,6 +5,6 @@ RUN curl -o libweb.tar.gz -L https://storage.googleapis.com/downloads.webmprojec
 RUN tar -xf libweb.tar.gz libwebp-0.4.3-rc1-linux-x86-64/bin/cwebp
 RUN cp libwebp-0.4.3-rc1-linux-x86-64/bin/cwebp /usr/bin
 RUN rm -rf libwebp-0.4.3-rc1-linux-x86-64/ libweb.tar.gz
-COPY go.mod main.go examplestore.db ./
+COPY go.mod main.go ./
 RUN go mod tidy
-ENTRYPOINT ["go", "run", "main.go"]
+ENTRYPOINT ["go", "run", "main.go", "-log-level", "DEBUG"]

@@ -3,3 +3,7 @@ services:
   whatsticker:
     build: .
     restart: always
+    volumes:
+      - type: bind
+        source: ./db
+        target: /project/db

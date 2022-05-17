@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"mime"
 	"net/http"
@@ -133,9 +134,11 @@ func handleImageStickers(event *events.Message) {
 }
 
 func main() {
-	dbLog := waLog.Stdout("Database", "INFO", true)
+	loglevel := flag.String("log-level", "INFO", "Set log level to one of (INFO/DEBUG)")
+	flag.Parse()
+	dbLog := waLog.Stdout("Database", *loglevel, true)
 	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite
-	container, err := sqlstore.New("sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New("sqlite3", "file:db/examplestore.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		panic(err)
 	}
@@ -144,9 +147,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	clientLog := waLog.Stdout("Client", "INFO", true)
+	clientLog := waLog.Stdout("Client", *loglevel, true)
 	client = whatsmeow.NewClient(deviceStore, clientLog)
 	client.AddEventHandler(eventHandler)
+	client.EnableAutoReconnect = true
+	client.AutoTrustIdentity = true
 
 	if client.Store.ID == nil {
 		loginNewClient()
