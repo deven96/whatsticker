@@ -54,10 +54,15 @@ func listenForCtrlC() {
 func eventHandler(evt interface{}) {
 
 	switch eventInfo := evt.(type) {
+	case *events.ConnectFailure, *events.ClientOutdated:
+		fmt.Println("Killing due to client related issues")
+		os.Exit(1)
 	case *events.StreamReplaced:
 		fmt.Println("Started another stream with the same device session")
 		// exit and wait for docker compose to restart
 		os.Exit(1)
+	case *events.OfflineSyncCompleted:
+		fmt.Println("Offline sync completed")
 	case *events.Message:
 		if strings.ToLower(eventInfo.Message.ImageMessage.GetCaption()) == command || strings.ToLower(eventInfo.Message.VideoMessage.GetCaption()) == command {
 
