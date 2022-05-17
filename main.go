@@ -51,15 +51,15 @@ func listenForCtrlC() {
 
 func eventHandler(evt interface{}) {
 	
-	switch v := evt.(type) {
+	switch eventInfo := evt.(type) {
 	case *events.Message:
-		if strings.ToLower(v.Message.ImageMessage.GetCaption()) == command {
+		if strings.ToLower(eventInfo.Message.ImageMessage.GetCaption()) == command {
 			
-			if v.Info.MediaType == "image" {
-				handleImageStickers(v)
+			if eventInfo.Info.MediaType == "image" {
+				handleImageStickers(eventInfo)
 			} else {
 				responseMessage := &waProto.Message{Conversation: proto.String("Bot currently supports sticker creation from images only")}
-				client.SendMessage(v.Info.Chat, "", responseMessage)
+				client.SendMessage(eventInfo.Info.Chat, "", responseMessage)
 			}
 		}
 	}
