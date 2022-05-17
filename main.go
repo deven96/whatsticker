@@ -24,6 +24,7 @@ import (
 )
 
 var client *whatsmeow.Client
+
 const command = "stickerize deven96"
 
 func loginNewClient() {
@@ -50,11 +51,11 @@ func listenForCtrlC() {
 }
 
 func eventHandler(evt interface{}) {
-	
+
 	switch eventInfo := evt.(type) {
 	case *events.Message:
-		if strings.ToLower(eventInfo.Message.ImageMessage.GetCaption()) == command {
-			
+		if strings.ToLower(eventInfo.Message.ImageMessage.GetCaption()) == command || strings.ToLower(eventInfo.Message.VideoMessage.GetCaption()) == command {
+
 			if eventInfo.Info.MediaType == "image" {
 				handleImageStickers(eventInfo)
 			} else {
