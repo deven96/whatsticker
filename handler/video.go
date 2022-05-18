@@ -120,17 +120,15 @@ func (handler *Video) Handle() *waProto.Message {
 	// Send WebP as sticker
 	return &waProto.Message{
 		StickerMessage: &waProto.StickerMessage{
-			Url:              proto.String(uploaded.URL),
-			DirectPath:       proto.String(uploaded.DirectPath),
-			MediaKey:         uploaded.MediaKey,
-			Mimetype:         proto.String(http.DetectContentType(data)),
-			FileEncSha256:    uploaded.FileEncSHA256,
-			FileSha256:       uploaded.FileSHA256,
-			FileLength:       proto.Uint64(uint64(len(data))),
-			FirstFrameLength: proto.Uint32(1),
-			Height:           proto.Uint32(1000),
-			IsAnimated:       proto.Bool(true),
-			ContextInfo:      handler.ToReply,
+			Url:           proto.String(uploaded.URL),
+			DirectPath:    proto.String(uploaded.DirectPath),
+			MediaKey:      uploaded.MediaKey,
+			Mimetype:      proto.String(http.DetectContentType(data)),
+			FileEncSha256: uploaded.FileEncSHA256,
+			FileSha256:    uploaded.FileSHA256,
+			FileLength:    proto.Uint64(uint64(len(data))),
+			//      IsAnimated:  proto.Bool(true),
+			ContextInfo: handler.ToReply,
 		},
 	}
 }
