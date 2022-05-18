@@ -40,11 +40,12 @@ func commonHandle(handler *Handler, name string, dataLimit int) {
 // Run : the appropriate handler using the event type
 func Run(client *whatsmeow.Client, event *events.Message) {
 	var handle Handler
+	fmt.Println(event.Info.MediaType)
 	switch event.Info.MediaType {
 	case "image":
 		fmt.Println("Using Image Handler")
 		handle = &Image{}
-	case "video":
+	case "video", "gif":
 		fmt.Println("Using Video Handler")
 		handle = &Video{}
 	default:
