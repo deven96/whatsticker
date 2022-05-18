@@ -128,6 +128,7 @@ func (handler *Video) Handle() *waProto.Message {
 			FileSha256:       uploaded.FileSHA256,
 			FileLength:       proto.Uint64(uint64(len(data))),
 			FirstFrameLength: proto.Uint32(1),
+			Height:           proto.Uint32(1000),
 			IsAnimated:       proto.Bool(true),
 			ContextInfo:      handler.ToReply,
 		},
