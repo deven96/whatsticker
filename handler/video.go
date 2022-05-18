@@ -45,6 +45,12 @@ func (handler *Video) Handle() *waProto.Message {
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		return nil
 	}
+	if video.GetFileLength() > VideoFileSizeLimit {
+		failed := &waProto.Message{Conversation: proto.String("Your video size is greater than 600Kb")}
+		handler.Client.SendMessage(event.Info.Chat, "", failed)
+		fmt.Printf("File size %d beyond conversion size", video.GetFileLength())
+		return nil
+	}
 	data, err := handler.Client.Download(video)
 	if err != nil {
 		fmt.Printf("Failed to download videos: %v\n", err)
@@ -73,17 +79,6 @@ func (handler *Video) Handle() *waProto.Message {
 	if err != nil {
 		fmt.Println(outb.String(), "*****", errb.String())
 		fmt.Printf("Failed to Convert Video to WebP %s", err)
-		return nil
-	}
-
-	fileStat, err := os.Stat(handler.RawPath)
-	if err != nil {
-		fmt.Printf("Unable to stat video %s: %s\n", handler.ConvertedPath, err)
-	}
-	if fileStat.Size() > VideoFileSizeLimit {
-		failed := &waProto.Message{Conversation: proto.String("Your video size is greater than 600Kb")}
-		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		fmt.Printf("File size %d beyond conversion size", fileStat.Size())
 		return nil
 	}
 
