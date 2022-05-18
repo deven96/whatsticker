@@ -24,12 +24,18 @@ type Video struct {
 	ConvertedPath string
 	Format        whatsmeow.MediaType
 	Event         *events.Message
+	ToReply       *waProto.ContextInfo
 }
 
 func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message) {
 	handler.Client = client
 	handler.Format = whatsmeow.MediaVideo
 	handler.Event = event
+	handler.ToReply = &waProto.ContextInfo{
+		StanzaId:      &event.Info.ID,
+		Participant:   proto.String(event.Info.Sender.String()),
+		QuotedMessage: event.Message,
+	}
 	newpath := filepath.Join(".", "videos/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "videos/converted")
@@ -41,13 +47,23 @@ func (handler *Video) Handle() *waProto.Message {
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
 	if video.GetSeconds() > VideoFileSecondsLimit {
-		failed := &waProto.Message{Conversation: proto.String("Your video is longer than 5 seconds")}
+		failed := &waProto.Message{
+			ExtendedTextMessage: &waProto.ExtendedTextMessage{
+				Text:        proto.String("Your video is longer than 5 seconds"),
+				ContextInfo: handler.ToReply,
+			},
+		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		return nil
 	}
 	if video.GetFileLength() > VideoFileSizeLimit {
 		length := video.GetFileLength() / 1024
-		failed := &waProto.Message{Conversation: proto.String(fmt.Sprintf("Your video size %dKb is greater than 600Kb", length))}
+		failed := &waProto.Message{
+			ExtendedTextMessage: &waProto.ExtendedTextMessage{
+				Text:        proto.String(fmt.Sprintf("Your video size %dKb is greater than 600Kb", length)),
+				ContextInfo: handler.ToReply,
+			},
+		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		fmt.Printf("File size %d beyond conversion size", video.GetFileLength())
 		return nil
@@ -104,28 +120,28 @@ func (handler *Video) Handle() *waProto.Message {
 	// Send WebP as sticker
 	return &waProto.Message{
 		StickerMessage: &waProto.StickerMessage{
-			Url:           proto.String(uploaded.URL),
-			DirectPath:    proto.String(uploaded.DirectPath),
-			MediaKey:      uploaded.MediaKey,
-			Mimetype:      proto.String(http.DetectContentType(data)),
-			FileEncSha256: uploaded.FileEncSHA256,
-			FileSha256:    uploaded.FileSHA256,
-			FileLength:    proto.Uint64(uint64(len(data))),
-			Width:         proto.Uint32(800),
-			Height:        proto.Uint32(600),
-			ContextInfo: &waProto.ContextInfo{
-				StanzaId:      &event.Info.ID,
-				Participant:   proto.String(event.Info.Sender.String()),
-				QuotedMessage: event.Message,
-			},
-			IsAnimated: proto.Bool(true),
+			Url:              proto.String(uploaded.URL),
+			DirectPath:       proto.String(uploaded.DirectPath),
+			MediaKey:         uploaded.MediaKey,
+			Mimetype:         proto.String(http.DetectContentType(data)),
+			FileEncSha256:    uploaded.FileEncSHA256,
+			FileSha256:       uploaded.FileSHA256,
+			FileLength:       proto.Uint64(uint64(len(data))),
+			FirstFrameLength: proto.Uint32(1),
+			IsAnimated:       proto.Bool(true),
+			ContextInfo:      handler.ToReply,
 		},
 	}
 }
 
 func (handler *Video) SendResponse(message *waProto.Message) {
 	event := handler.Event
-	completed := &waProto.Message{Conversation: proto.String(CompletedMessage)}
+	completed := &waProto.Message{
+		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+			Text:        proto.String(CompletedMessage),
+			ContextInfo: handler.ToReply,
+		},
+	}
 	handler.Client.SendMessage(event.Info.Chat, "", message)
 	handler.Client.SendMessage(event.Info.Chat, "", completed)
 }

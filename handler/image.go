@@ -23,12 +23,18 @@ type Image struct {
 	ConvertedPath string
 	Format        whatsmeow.MediaType
 	Event         *events.Message
+	ToReply       *waProto.ContextInfo
 }
 
 func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message) {
 	handler.Client = client
 	handler.Format = whatsmeow.MediaImage
 	handler.Event = event
+	handler.ToReply = &waProto.ContextInfo{
+		StanzaId:      &event.Info.ID,
+		Participant:   proto.String(event.Info.Sender.String()),
+		QuotedMessage: event.Message,
+	}
 	newpath := filepath.Join(".", "images/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "images/converted")
@@ -68,7 +74,12 @@ func (handler *Image) Handle() *waProto.Message {
 		fmt.Printf("Unable to stat image %s: %s\n", handler.ConvertedPath, err)
 	}
 	if fileStat.Size() > ImageFileSizeLimit {
-		failed := &waProto.Message{Conversation: proto.String("Your image size is greater than 2Mb")}
+		failed := &waProto.Message{
+			ExtendedTextMessage: &waProto.ExtendedTextMessage{
+				Text:        proto.String("Your image size is greater than 2Mb"),
+				ContextInfo: handler.ToReply,
+			},
+		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		fmt.Printf("File size %d beyond conversion size", fileStat.Size())
 		return nil
@@ -97,18 +108,19 @@ func (handler *Image) Handle() *waProto.Message {
 			FileEncSha256: uploaded.FileEncSHA256,
 			FileSha256:    uploaded.FileSHA256,
 			FileLength:    proto.Uint64(uint64(len(data))),
-			ContextInfo: &waProto.ContextInfo{
-				StanzaId:      &event.Info.ID,
-				Participant:   proto.String(event.Info.Sender.String()),
-				QuotedMessage: event.Message,
-			},
+			ContextInfo:   handler.ToReply,
 		},
 	}
 }
 
 func (handler *Image) SendResponse(message *waProto.Message) {
 	event := handler.Event
-	completed := &waProto.Message{Conversation: proto.String(CompletedMessage)}
+	completed := &waProto.Message{
+		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+			Text:        proto.String(CompletedMessage),
+			ContextInfo: handler.ToReply,
+		},
+	}
 	handler.Client.SendMessage(event.Info.Chat, "", message)
 	handler.Client.SendMessage(event.Info.Chat, "", completed)
 }
