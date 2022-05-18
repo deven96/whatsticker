@@ -22,6 +22,10 @@ const ImageFileSizeLimit = 2097000
 // seems not to animate
 const VideoFileSizeLimit = 614400
 
+// VideoFileSecondsLimit sets video to be less than 5 seconds
+// or it no longer animates
+const VideoFileSecondsLimit = 5
+
 // Handler interface for multiple message types
 type Handler interface {
 	SetUp(client *whatsmeow.Client, event *events.Message)

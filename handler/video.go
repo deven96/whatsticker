@@ -40,6 +40,11 @@ func (handler *Video) Handle() *waProto.Message {
 	// Download Video
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
+	if video.GetSeconds() > VideoFileSecondsLimit {
+		failed := &waProto.Message{Conversation: proto.String("Your video is longer than 5 seconds")}
+		handler.Client.SendMessage(event.Info.Chat, "", failed)
+		return nil
+	}
 	data, err := handler.Client.Download(video)
 	if err != nil {
 		fmt.Printf("Failed to download videos: %v\n", err)
