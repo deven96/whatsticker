@@ -91,10 +91,10 @@ func (handler *Video) Handle() *waProto.Message {
 	// -lossless 0 sets up for lossy compression
 	var qValue int
 	switch dataLen := len(data); {
-	case dataLen < 400000:
-		qValue = 50
 	case dataLen < 300000:
-		qValue = 75
+		qValue = 30
+	case dataLen < 400000:
+		qValue = 20
 	default:
 		qValue = 10
 	}
