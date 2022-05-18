@@ -67,10 +67,13 @@ func (handler *Video) Handle() *waProto.Message {
 	}
 	// Convert Video (.mp4) to WebP using ffmpeg
 	// https://gist.github.com/witmin/1edf926c2886d5c8d9b264d70baf7379
-	// Make use of lossy (-lossless 0) mode and compression_level set to 0 for fastest
-	// encoding time
 	// http://ffmpeg.org/ffmpeg-all.html#libwebp
-	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -filter:v fps=fps=20 -compression_level 0 -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, handler.ConvertedPath)
+	// -an disable audio
+	// -t 5 seconds limit
+	// -qscore quality score at 50% (to reduce final webp size)
+	// -compression_level 6 for smallest size
+	// -lossless 1 sets up for lossless compression
+	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 0 -qscore 50 -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
