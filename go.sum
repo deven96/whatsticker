@@ -15,8 +15,8 @@ github.com/mdp/qrterminal/v3 v3.0.0 h1:ywQqLRBXWTktytQNDKFjhAvoGkLVN3J2tAFZ0kMd9
 github.com/mdp/qrterminal/v3 v3.0.0/go.mod h1:NJpfAs7OAm77Dy8EkWrtE4aq+cE6McoLXlBqXQEwvE0=
 go.mau.fi/libsignal v0.0.0-20220425070825-c40c839ee6a0 h1:3IQF2bgAyibdo77hTejwuJe4jlypj9QaE4xCQuxrThM=
 go.mau.fi/libsignal v0.0.0-20220425070825-c40c839ee6a0/go.mod h1:kBOXTvYyDG/q1Ihgvd4J6WenGPh7wtEGvPKF6vmf5ak=
-go.mau.fi/whatsmeow v0.0.0-20220516104204-543fb5c66590 h1:x0nYRxvlIuvFRPMhogUoydf2OKvFFibr2PZVU3Bt7y8=
-go.mau.fi/whatsmeow v0.0.0-20220516104204-543fb5c66590/go.mod h1:iUBgOLNaqShLrR17u0kIiRptIGFH+nbT1tRhaWBEX/c=
+go.mau.fi/whatsmeow v0.0.0-20220517205516-246a2007ca7f h1:0eo1TMJBx2pv7vNh/sPAl8bXPpn+HwrVJntuOnejMfs=
+go.mau.fi/whatsmeow v0.0.0-20220517205516-246a2007ca7f/go.mod h1:iUBgOLNaqShLrR17u0kIiRptIGFH+nbT1tRhaWBEX/c=
 golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 h1:kUhD7nTDoI3fVd9G4ORWrbV5NY0liEs/Jg2pv5f+bBA=
 golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
