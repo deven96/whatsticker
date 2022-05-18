@@ -52,7 +52,7 @@ func Run(client *whatsmeow.Client, event *events.Message) {
 		client.SendMessage(event.Info.Chat, "", responseMessage)
 		return
 	}
-	//  defer handle.CleanUp()
+	defer handle.CleanUp()
 	handle.SetUp(client, event)
 	message := handle.Handle()
 	if message == nil {
