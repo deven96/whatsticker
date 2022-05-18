@@ -86,18 +86,20 @@ func (handler *Video) Handle() *waProto.Message {
 	// https://gist.github.com/witmin/1edf926c2886d5c8d9b264d70baf7379
 	// http://ffmpeg.org/ffmpeg-all.html#libwebp
 	// -an disable audio
-	// -t 5 seconds limit
-	// -qscore quality score at 50% (to reduce final webp size)
-	// -compression_level 6 for smallest size
-	// -lossless 1 sets up for lossless compression
-	// bitrate should be target size i.e 1MB (1024KB) whatsapp animated sticker limit / duration
-	bitDenum := video.GetSeconds()
-	if bitDenum > 1 && len(data) > 400000 {
-		bitDenum = 1
+	// -q:v (reduce for larger videos)
+	// -compression_level 0 for smallest size
+	// -lossless 0 sets up for lossy compression
+	var qValue int
+	switch dataLen := len(data); {
+	case dataLen < 400000:
+		qValue = 50
+	case dataLen < 300000:
+		qValue = 75
+	default:
+		qValue = 10
 	}
-	bitrate := 1024 / bitDenum
-	fmt.Println("Target Bit rate is ", bitrate)
-	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -b:v %dk -loop 0 -preset default -an -vsync 0 -s 800:800 %s", handler.RawPath, bitrate, handler.ConvertedPath)
+	fmt.Printf("Q value is %d", qValue)
+	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800 %s", handler.RawPath, qValue, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
