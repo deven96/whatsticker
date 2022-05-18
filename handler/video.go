@@ -46,7 +46,8 @@ func (handler *Video) Handle() *waProto.Message {
 		return nil
 	}
 	if video.GetFileLength() > VideoFileSizeLimit {
-		failed := &waProto.Message{Conversation: proto.String("Your video size is greater than 600Kb")}
+		length := video.GetFileLength() / 1024
+		failed := &waProto.Message{Conversation: proto.String(fmt.Sprintf("Your video size %dKb is greater than 600Kb", length))}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		fmt.Printf("File size %d beyond conversion size", video.GetFileLength())
 		return nil
@@ -73,7 +74,7 @@ func (handler *Video) Handle() *waProto.Message {
 	// -qscore quality score at 50% (to reduce final webp size)
 	// -compression_level 6 for smallest size
 	// -lossless 1 sets up for lossless compression
-	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 0 -qscore 50 -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, handler.ConvertedPath)
+	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
