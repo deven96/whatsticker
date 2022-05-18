@@ -93,7 +93,7 @@ func (handler *Video) Handle() *waProto.Message {
 	// bitrate should be target size i.e 1MB (1024KB) whatsapp animated sticker limit / duration
 	bitrate := 1024 / video.GetSeconds()
 	fmt.Println("Target Bit rate is ", bitrate)
-	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -b:v %dk -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, bitrate, handler.ConvertedPath)
+	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -b:v %dk -loop 0 -preset default -an -vsync 0 -s 800:800 %s", handler.RawPath, bitrate, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
@@ -120,16 +120,15 @@ func (handler *Video) Handle() *waProto.Message {
 	// Send WebP as sticker
 	return &waProto.Message{
 		StickerMessage: &waProto.StickerMessage{
-			Url:              proto.String(uploaded.URL),
-			DirectPath:       proto.String(uploaded.DirectPath),
-			MediaKey:         uploaded.MediaKey,
-			Mimetype:         proto.String(http.DetectContentType(data)),
-			FileEncSha256:    uploaded.FileEncSHA256,
-			FileSha256:       uploaded.FileSHA256,
-			FileLength:       proto.Uint64(uint64(len(data))),
-			FirstFrameLength: proto.Uint32(uint32(uploaded.FileLength)),
-			IsAnimated:       proto.Bool(true),
-			ContextInfo:      handler.ToReply,
+			Url:           proto.String(uploaded.URL),
+			DirectPath:    proto.String(uploaded.DirectPath),
+			MediaKey:      uploaded.MediaKey,
+			Mimetype:      proto.String(http.DetectContentType(data)),
+			FileEncSha256: uploaded.FileEncSHA256,
+			FileSha256:    uploaded.FileSHA256,
+			FileLength:    proto.Uint64(uint64(len(data))),
+			IsAnimated:    proto.Bool(true),
+			ContextInfo:   handler.ToReply,
 		},
 	}
 }
