@@ -97,6 +97,11 @@ func (handler *Image) Handle() *waProto.Message {
 			FileEncSha256: uploaded.FileEncSHA256,
 			FileSha256:    uploaded.FileSHA256,
 			FileLength:    proto.Uint64(uint64(len(data))),
+			ContextInfo: &waProto.ContextInfo{
+				StanzaId:      &event.Info.ID,
+				Participant:   proto.String(event.Info.Sender.String()),
+				QuotedMessage: event.Message,
+			},
 		},
 	}
 }

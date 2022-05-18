@@ -76,6 +76,7 @@ func (handler *Video) Handle() *waProto.Message {
 	// -lossless 1 sets up for lossless compression
 	// bitrate should be target size i.e 1MB (1024KB) whatsapp animated sticker limit / duration
 	bitrate := 1024 / video.GetSeconds()
+	fmt.Println("Target Bit rate is ", bitrate)
 	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -b:v %dk -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, bitrate, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
@@ -110,7 +111,12 @@ func (handler *Video) Handle() *waProto.Message {
 			FileEncSha256: uploaded.FileEncSHA256,
 			FileSha256:    uploaded.FileSHA256,
 			FileLength:    proto.Uint64(uint64(len(data))),
-			IsAnimated:    proto.Bool(true),
+			ContextInfo: &waProto.ContextInfo{
+				StanzaId:      &event.Info.ID,
+				Participant:   proto.String(event.Info.Sender.String()),
+				QuotedMessage: event.Message,
+			},
+			IsAnimated: proto.Bool(true),
 		},
 	}
 }
