@@ -74,7 +74,9 @@ func (handler *Video) Handle() *waProto.Message {
 	// -qscore quality score at 50% (to reduce final webp size)
 	// -compression_level 6 for smallest size
 	// -lossless 1 sets up for lossless compression
-	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -loop 0 -preset default -an -vsync 0 -s 800:600 %s", handler.RawPath, handler.ConvertedPath)
+	// bitrate should be target size i.e 1MB (1024KB) whatsapp animated sticker limit / duration
+	bitrate := 1024 / video.GetSeconds()
+	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -t 5 -filter:v fps=fps=20 -lossless 1 -compression_level 6 -b %dk -loop 0 -preset slow -an -vsync 0 -s 800:600 %s", handler.RawPath, bitrate, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
