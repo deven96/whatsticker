@@ -15,8 +15,12 @@ const WebPFormat = ".webp"
 // CompletedMessage is the proto message sent when done
 const CompletedMessage = "Done Stickerizing"
 
-// FileSizeLimit limits file sizes to be converted to 5MB(Mibibytes) in Bytes
-const FileSizeLimit = 5243000
+// ImageFileSizeLimit limits file sizes to be converted to 2MB(Mebibytes) in Bytes
+const ImageFileSizeLimit = 2097000
+
+// VideoFileSizeLimit limits video to be much smaller cuz over 600KB
+// seems not to animate
+const VideoFileSizeLimit = 614400
 
 // Handler interface for multiple message types
 type Handler interface {

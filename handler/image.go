@@ -67,7 +67,9 @@ func (handler *Image) Handle() *waProto.Message {
 	if err != nil {
 		fmt.Printf("Unable to stat image %s: %s\n", handler.ConvertedPath, err)
 	}
-	if fileStat.Size() > FileSizeLimit {
+	if fileStat.Size() > ImageFileSizeLimit {
+		failed := &waProto.Message{Conversation: proto.String("Your image size is greater than 2Mb")}
+		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		fmt.Printf("File size %d beyond conversion size", fileStat.Size())
 		return nil
 	}
