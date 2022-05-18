@@ -18,9 +18,9 @@ const CompletedMessage = "Done Stickerizing"
 // ImageFileSizeLimit limits file sizes to be converted to 2MB(Mebibytes) in Bytes
 const ImageFileSizeLimit = 2097000
 
-// VideoFileSizeLimit limits video to be much smaller cuz over 600KB
+// VideoFileSizeLimit limits video to be much smaller cuz over 1000KiB(1MiB)
 // seems not to animate
-const VideoFileSizeLimit = 614400
+const VideoFileSizeLimit = 1024000
 
 // VideoFileSecondsLimit sets video to be less than 5 seconds
 // or it no longer animates

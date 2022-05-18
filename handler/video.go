@@ -60,7 +60,7 @@ func (handler *Video) Handle() *waProto.Message {
 		length := video.GetFileLength() / 1024
 		failed := &waProto.Message{
 			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String(fmt.Sprintf("Your video size %dKb is greater than 600Kb", length)),
+				Text:        proto.String(fmt.Sprintf("Your video size %dKb is greater than 1000Kb", length)),
 				ContextInfo: handler.ToReply,
 			},
 		}
