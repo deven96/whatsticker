@@ -92,11 +92,11 @@ func (handler *Video) Handle() *waProto.Message {
 	var qValue int
 	switch dataLen := len(data); {
 	case dataLen < 300000:
-		qValue = 30
-	case dataLen < 400000:
 		qValue = 20
-	default:
+	case dataLen < 400000:
 		qValue = 10
+	default:
+		qValue = 5
 	}
 	fmt.Printf("Q value is %d", qValue)
 	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800 %s", handler.RawPath, qValue, handler.ConvertedPath)
