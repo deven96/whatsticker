@@ -28,7 +28,7 @@ const VideoFileSecondsLimit = 5
 
 // Handler interface for multiple message types
 type Handler interface {
-	// Setup the handler and the message to reply to
+	// Setup the handler, event and context to reply
 	SetUp(client *whatsmeow.Client, event *events.Message)
 	// Validate : ensures the media conforms to some standards
 	// also sends message to client about issue
@@ -41,13 +41,10 @@ type Handler interface {
 	CleanUp()
 }
 
-func commonHandle(handler *Handler, name string, dataLimit int) {
-}
-
 // Run : the appropriate handler using the event type
 func Run(client *whatsmeow.Client, event *events.Message) {
 	var handle Handler
-	fmt.Println(event.Info.MediaType)
+	fmt.Printf("Running for %s type\n", event.Info.MediaType)
 	switch event.Info.MediaType {
 	case "image":
 		fmt.Println("Using Image Handler")
@@ -64,7 +61,7 @@ func Run(client *whatsmeow.Client, event *events.Message) {
 	handle.SetUp(client, event)
 	invalid := handle.Validate()
 	if invalid != nil {
-		fmt.Printf("%s", invalid)
+		fmt.Printf("%s\n", invalid)
 		return
 	}
 	message := handle.Handle()

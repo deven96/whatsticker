@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image"
 	"mime"
 	"net/http"
 	"os"
@@ -44,6 +43,9 @@ func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message) {
 }
 
 func (handler *Video) Validate() error {
+	if handler == nil {
+		return errors.New("Please initialize handler")
+	}
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
 	if video.GetSeconds() > VideoFileSecondsLimit {
@@ -72,6 +74,9 @@ func (handler *Video) Validate() error {
 }
 
 func (handler *Video) Handle() *waProto.Message {
+	if handler == nil {
+		return nil
+	}
 	// Download Video
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
@@ -147,6 +152,9 @@ func (handler *Video) Handle() *waProto.Message {
 }
 
 func (handler *Video) SendResponse(message *waProto.Message) {
+	if handler == nil {
+		return
+	}
 	event := handler.Event
 	completed := &waProto.Message{
 		ExtendedTextMessage: &waProto.ExtendedTextMessage{
@@ -159,21 +167,10 @@ func (handler *Video) SendResponse(message *waProto.Message) {
 }
 
 func (handler *Video) CleanUp() {
+	if handler == nil {
+		return
+	}
 	os.Remove(handler.RawPath)
 	os.Remove(handler.ConvertedPath)
 
-}
-
-func getVideoDimensions(path string) (int, int) {
-	width, height := 0, 0
-	if reader, err := os.Open(path); err == nil {
-		defer reader.Close()
-		im, _, _ := image.DecodeConfig(reader)
-		fmt.Printf("%s %d %d\n", path, im.Width, im.Height)
-		width = im.Width
-		height = im.Height
-	} else {
-		fmt.Println("Impossible to open the file:", err)
-	}
-	return width, height
 }

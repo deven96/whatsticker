@@ -4,9 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"os"
 	"os/signal"
 	"strings"
@@ -60,7 +57,32 @@ func eventHandler(evt interface{}) {
 	case *events.OfflineSyncCompleted:
 		fmt.Println("Offline sync completed")
 	case *events.Message:
-		if strings.ToLower(eventInfo.Message.ImageMessage.GetCaption()) == command || strings.ToLower(eventInfo.Message.VideoMessage.GetCaption()) == command {
+		extended := eventInfo.Message.GetExtendedTextMessage()
+		quotedMsg := extended.GetContextInfo().GetQuotedMessage()
+		quotedImage := quotedMsg.GetImageMessage()
+		quotedVideo := quotedMsg.GetVideoMessage()
+		quotedText := extended.GetText()
+
+		imageMatch := strings.ToLower(eventInfo.Message.GetImageMessage().GetCaption()) == command
+		videoMatch := strings.ToLower(eventInfo.Message.GetVideoMessage().GetCaption()) == command
+		// check if quoted message with correct caption references media
+		quotedMatch := strings.ToLower(quotedText) == command &&
+			(quotedImage != nil || quotedVideo != nil)
+
+		if imageMatch || videoMatch || quotedMatch {
+			if quotedMatch {
+				// replace the actual message struct with quoted media
+				if quotedImage != nil {
+					eventInfo.Info.MediaType = "image"
+					eventInfo.Message.ImageMessage = quotedImage
+				} else if quotedVideo != nil {
+					// FIXME: gif quoted message just gets set as video
+					// currently does not matter as much since both
+					// use the same Video handler
+					eventInfo.Info.MediaType = "video"
+					eventInfo.Message.VideoMessage = quotedVideo
+				}
+			}
 			go handler.Run(client, eventInfo)
 		}
 	}
