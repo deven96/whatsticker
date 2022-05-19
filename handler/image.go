@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"mime"
@@ -41,6 +42,22 @@ func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message) {
 	os.MkdirAll(newpath, os.ModePerm)
 }
 
+func (handler *Image) Validate() error {
+	event := handler.Event
+	image := event.Message.GetImageMessage()
+	if image.GetFileLength() > ImageFileSizeLimit {
+		failed := &waProto.Message{
+			ExtendedTextMessage: &waProto.ExtendedTextMessage{
+				Text:        proto.String("Your file is larger than 2MB"),
+				ContextInfo: handler.ToReply,
+			},
+		}
+		handler.Client.SendMessage(event.Info.Chat, "", failed)
+		return errors.New("File too large")
+	}
+	return nil
+}
+
 func (handler *Image) Handle() *waProto.Message {
 	// Download Image
 	event := handler.Event
@@ -67,21 +84,6 @@ func (handler *Image) Handle() *waProto.Message {
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println("Failed to Convert Image to WebP")
-		return nil
-	}
-	fileStat, err := os.Stat(handler.RawPath)
-	if err != nil {
-		fmt.Printf("Unable to stat image %s: %s\n", handler.ConvertedPath, err)
-	}
-	if fileStat.Size() > ImageFileSizeLimit {
-		failed := &waProto.Message{
-			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String("Your image size is greater than 2Mb"),
-				ContextInfo: handler.ToReply,
-			},
-		}
-		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		fmt.Printf("File size %d beyond conversion size", fileStat.Size())
 		return nil
 	}
 

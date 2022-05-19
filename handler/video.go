@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"mime"
@@ -42,8 +43,7 @@ func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message) {
 	os.MkdirAll(newpath, os.ModePerm)
 }
 
-func (handler *Video) Handle() *waProto.Message {
-	// Download Video
+func (handler *Video) Validate() error {
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
 	if video.GetSeconds() > VideoFileSecondsLimit {
@@ -54,7 +54,7 @@ func (handler *Video) Handle() *waProto.Message {
 			},
 		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		return nil
+		return errors.New("Video too long")
 	}
 	if video.GetFileLength() > VideoFileSizeLimit {
 		length := video.GetFileLength() / 1024
@@ -66,8 +66,15 @@ func (handler *Video) Handle() *waProto.Message {
 		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
 		fmt.Printf("File size %d beyond conversion size", video.GetFileLength())
-		return nil
+		return errors.New("Video size too large")
 	}
+	return nil
+}
+
+func (handler *Video) Handle() *waProto.Message {
+	// Download Video
+	event := handler.Event
+	video := event.Message.GetVideoMessage()
 	data, err := handler.Client.Download(video)
 	if err != nil {
 		fmt.Printf("Failed to download videos: %v\n", err)

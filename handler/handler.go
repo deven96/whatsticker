@@ -28,9 +28,16 @@ const VideoFileSecondsLimit = 5
 
 // Handler interface for multiple message types
 type Handler interface {
+	// Setup the handler and the message to reply to
 	SetUp(client *whatsmeow.Client, event *events.Message)
+	// Validate : ensures the media conforms to some standards
+	// also sends message to client about issue
+	Validate() error
+	// Handle : obtains the message to be sent as response
 	Handle() *waProto.Message
+	// SendResponse : sends the response
 	SendResponse(message *waProto.Message)
+	// CleanUp : cleans up any saved files to prevent bloat
 	CleanUp()
 }
 
@@ -55,6 +62,11 @@ func Run(client *whatsmeow.Client, event *events.Message) {
 	}
 	defer handle.CleanUp()
 	handle.SetUp(client, event)
+	invalid := handle.Validate()
+	if invalid != nil {
+		fmt.Printf("%s", invalid)
+		return
+	}
 	message := handle.Handle()
 	if message == nil {
 		fmt.Println("Could not get sticker message to send")
