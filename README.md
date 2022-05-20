@@ -1,7 +1,7 @@
 # Whatsticker
 
 <p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
-A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <a name="caption">stickerize deven96</a>
+A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize deven96</u></a></b>
 
 
 ## Usage
@@ -41,8 +41,8 @@ A Whatsapp bot that turns pictures, small videos and gifs into stickers with the
 
 The following flags are available
 
-`-log-level` : To switch between log verbosity between `INFO` and `DEBUG`
-`-reply-to`  : Set to true if bot should quote original messages with reply
+- `-log-level` : To switch between log verbosity between `INFO` and `DEBUG`
+- `-reply-to`  : Set to true if bot should quote original messages with reply
 
 
 ## Flow
@@ -59,7 +59,7 @@ The following flags are available
 ```
 
 * Initializes WA client (new credentials in db or uses existing)
-* Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [`handler.Run`](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run(]
+* Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [handler.Run()](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run(]
 * Four possible messages trigger the core media handler
   - Image with [caption](#caption)
   - Video with [caption](#caption)
