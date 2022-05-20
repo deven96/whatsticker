@@ -47,6 +47,7 @@ The following flags are available
 
 ## Flow
 
+```
 |├── handler                         # Contains logic for running sticker procedure on images/video
 |    |___ handler.go
 |    |___ image.go
@@ -55,6 +56,7 @@ The following flags are available
 |├── LICENSE
 |├── main.go                         # Login to WA client and sets up event handler
 |└── README.md
+```
 
 * Initializes WA client (new credentials in db or uses existing)
 * Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [`handler.Run`](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run(]
@@ -75,10 +77,10 @@ The following flags are available
 
 ## Limits/Issues
 
- - [] _Media sizes/length enforced by code_
- - [] _Some sticker results for videos are not animated (WebP size exceeds 1MB)_
- - [] _Sometimes original media cannot be downloaded (especially for quoting older media messages with caption)_
- - [] _reply-to flag causes iOS users to be [incorrectly tagged](https://github.com/tulir/whatsmeow/issues/135)_
+ - [ ] _Media sizes/length enforced by code_
+ - [ ] _Some sticker results for videos are not animated (WebP size exceeds 1MB)_
+ - [ ] _Sometimes original media cannot be downloaded (especially for quoting older media messages with caption)_
+ - [ ] _reply-to flag causes iOS users to be [incorrectly tagged](https://github.com/tulir/whatsmeow/issues/135)_
 
 ## License
 
