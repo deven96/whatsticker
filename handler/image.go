@@ -34,14 +34,16 @@ type Image struct {
 	ToReply       *waProto.ContextInfo
 }
 
-func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message) {
+func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message, replyTo bool) {
 	handler.Client = client
 	handler.Format = whatsmeow.MediaImage
 	handler.Event = event
-	handler.ToReply = &waProto.ContextInfo{
-		StanzaId:      &event.Info.ID,
-		Participant:   proto.String(event.Info.Sender.String()),
-		QuotedMessage: event.Message,
+	if replyTo {
+		handler.ToReply = &waProto.ContextInfo{
+			StanzaId:      &event.Info.ID,
+			Participant:   proto.String(event.Info.Sender.String()),
+			QuotedMessage: event.Message,
+		}
 	}
 	newpath := filepath.Join(".", "images/raw")
 	os.MkdirAll(newpath, os.ModePerm)

@@ -27,14 +27,16 @@ type Video struct {
 	ToReply       *waProto.ContextInfo
 }
 
-func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message) {
+func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message, replyTo bool) {
 	handler.Client = client
 	handler.Format = whatsmeow.MediaVideo
 	handler.Event = event
-	handler.ToReply = &waProto.ContextInfo{
-		StanzaId:      &event.Info.ID,
-		Participant:   proto.String(event.Info.Sender.String()),
-		QuotedMessage: event.Message,
+	if replyTo {
+		handler.ToReply = &waProto.ContextInfo{
+			StanzaId:      &event.Info.ID,
+			Participant:   proto.String(event.Info.Sender.String()),
+			QuotedMessage: event.Message,
+		}
 	}
 	newpath := filepath.Join(".", "videos/raw")
 	os.MkdirAll(newpath, os.ModePerm)
@@ -110,7 +112,7 @@ func (handler *Video) Handle() *waProto.Message {
 	default:
 		qValue = 5
 	}
-	fmt.Printf("Q value is %d", qValue)
+	fmt.Printf("Q value is %d\n", qValue)
 	commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800 %s", handler.RawPath, qValue, handler.ConvertedPath)
 	cmd := exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer

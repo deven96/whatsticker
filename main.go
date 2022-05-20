@@ -20,6 +20,7 @@ import (
 )
 
 var client *whatsmeow.Client
+var replyTo *bool
 
 const command = "stickerize deven96"
 
@@ -83,13 +84,14 @@ func eventHandler(evt interface{}) {
 					eventInfo.Message.VideoMessage = quotedVideo
 				}
 			}
-			go handler.Run(client, eventInfo)
+			go handler.Run(client, eventInfo, *replyTo)
 		}
 	}
 }
 
 func main() {
 	loglevel := flag.String("log-level", "INFO", "Set log level to one of (INFO/DEBUG)")
+	replyTo = flag.Bool("reply-to", false, "Set to true to highlight messages to respond to")
 	flag.Parse()
 	dbLog := waLog.Stdout("Database", *loglevel, true)
 	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite
