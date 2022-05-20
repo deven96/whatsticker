@@ -59,7 +59,7 @@ The following flags are available
 ```
 
 * Initializes WA client (new credentials in db or uses existing)
-* Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [handler.Run()](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run(]
+* Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [handler.Run()](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run()
 * Four possible messages trigger the core media handler
   - Image with [caption](#caption)
   - Video with [caption](#caption)
