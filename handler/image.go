@@ -95,7 +95,7 @@ func (handler *Image) Handle() *waProto.Message {
 
 	// Convert Image to WebP
 	// Using https://developers.google.com/speed/webp/docs/cwebp
-	cmd := exec.Command("cwebp", handler.RawPath, "-o", handler.ConvertedPath)
+	cmd := exec.Command("cwebp", handler.RawPath, "-resize", "600", "0", "-o", handler.ConvertedPath)
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println("Failed to Convert Image to WebP")
