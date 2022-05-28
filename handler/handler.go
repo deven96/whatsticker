@@ -73,3 +73,7 @@ func Run(client *whatsmeow.Client, event *events.Message, replyTo bool) {
 	}
 	handle.SendResponse(message)
 }
+
+//func RunTest() {
+//  metadata.GenerateMetadata("images/converted/STK-20211123-WA0006.webp", "images/metadata/test.exif")
+//}

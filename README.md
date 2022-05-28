@@ -48,6 +48,10 @@ The following flags are available
 ## Flow
 
 ```
+|___ metadata                        # Customizes sticker exif information
+|    |__ metadata.go
+|    |__ raw.exif.tpl
+|
 |├── handler                         # Contains logic for running sticker procedure on images/video
 |    |___ handler.go
 |    |___ image.go
@@ -71,7 +75,7 @@ The following flags are available
 * `Handler` has some methods that get run
   - _SetUp_ : set client to WA client, reply to option and create folders for media if not exist
   - _Validate_: enforce some constraints on media size/length
-  - _Handle_: Downloads the raw media -> Converts media to webP (as WhatsApp stickers are wrappers around webp images) using the specified codec -> Uploads it to WA -> Return a sticker message
+  - _Handle_: Downloads the raw media -> Converts media to webP (as WhatsApp stickers are wrappers around webp images) using the specified codec -> Appends exif information to webp Image -> Uploads it to WA -> Return a sticker message
   - _SendResponse_: Sends sticker to originating chat
   - _CleanUp_: Remove raw and converted media from file system
 
@@ -93,3 +97,4 @@ Library/Resource | Use
 [tulir/whatsmeow](https://github.com/tulir/whatsmeow) | whatsmeow is a Go library for the WhatsApp web multidevice API.
 [ffmpeg](https://ffmpeg.org) | A complete cross platform solution to record, convert and stream video (and audio).
 [cwebp](https://developers.google.com/speed/webp/docs/cwebp) | Compress an image file into WebP file
+[webpmux](https://developers.google.com/speed/webp/docs/webpmux) | Write exif file to set metadata on stickers

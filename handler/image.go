@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/deven96/whatsticker/metadata"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -29,6 +30,7 @@ type Image struct {
 	Client        *whatsmeow.Client
 	RawPath       string
 	ConvertedPath string
+	MetadataPath  string
 	Format        whatsmeow.MediaType
 	Event         *events.Message
 	ToReply       *waProto.ContextInfo
@@ -48,6 +50,8 @@ func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message, rep
 	newpath := filepath.Join(".", "images/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "images/converted")
+	os.MkdirAll(newpath, os.ModePerm)
+	newpath = filepath.Join(".", "images/metadata")
 	os.MkdirAll(newpath, os.ModePerm)
 }
 
@@ -85,6 +89,7 @@ func (handler *Image) Handle() *waProto.Message {
 	exts, _ := mime.ExtensionsByType(image.GetMimetype())
 	handler.RawPath = fmt.Sprintf("images/raw/%s%s", event.Info.ID, exts[0])
 	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", event.Info.ID, WebPFormat)
+	handler.MetadataPath = fmt.Sprintf("images/metadata/%s.exif", event.Info.ID)
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
 		fmt.Printf("Failed to save image: %v", err)
@@ -101,6 +106,8 @@ func (handler *Image) Handle() *waProto.Message {
 		fmt.Println("Failed to Convert Image to WebP")
 		return nil
 	}
+
+	metadata.GenerateMetadata(handler.ConvertedPath, handler.MetadataPath)
 
 	data, err = os.ReadFile(handler.ConvertedPath)
 	if err != nil {

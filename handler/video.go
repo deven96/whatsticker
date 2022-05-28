@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/deven96/whatsticker/metadata"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -22,6 +23,7 @@ type Video struct {
 	Client        *whatsmeow.Client
 	RawPath       string
 	ConvertedPath string
+	MetadataPath  string
 	Format        whatsmeow.MediaType
 	Event         *events.Message
 	ToReply       *waProto.ContextInfo
@@ -41,6 +43,8 @@ func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message, rep
 	newpath := filepath.Join(".", "videos/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "videos/converted")
+	os.MkdirAll(newpath, os.ModePerm)
+	newpath = filepath.Join(".", "videos/metadata")
 	os.MkdirAll(newpath, os.ModePerm)
 }
 
@@ -90,6 +94,7 @@ func (handler *Video) Handle() *waProto.Message {
 	exts, _ := mime.ExtensionsByType(video.GetMimetype())
 	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", event.Info.ID, exts[0])
 	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", event.Info.ID, WebPFormat)
+	handler.MetadataPath = fmt.Sprintf("videos/metadata/%s.exif", event.Info.ID)
 	fmt.Println(len(data))
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
@@ -124,6 +129,8 @@ func (handler *Video) Handle() *waProto.Message {
 		fmt.Printf("Failed to Convert Video to WebP %s", err)
 		return nil
 	}
+
+	metadata.GenerateMetadata(handler.ConvertedPath, handler.MetadataPath)
 
 	data, err = os.ReadFile(handler.ConvertedPath)
 	if err != nil {
