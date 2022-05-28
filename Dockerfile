@@ -9,5 +9,6 @@ RUN cp libwebp-0.4.3-rc1-linux-x86-64/bin/webpmux /usr/bin
 RUN rm -rf libwebp-0.4.3-rc1-linux-x86-64/ libweb.tar.gz
 COPY go.mod main.go ./
 ADD handler ./handler
+ADD metadata ./metadata
 RUN go mod tidy
 ENTRYPOINT ["go", "run", "main.go", "-log-level", "DEBUG"]

@@ -21,6 +21,7 @@ import (
 
 var client *whatsmeow.Client
 var replyTo *bool
+var sender *string
 
 var commands = map[string]struct{}{
 	"stickerize deven96": {},
@@ -71,6 +72,7 @@ func eventHandler(evt interface{}) {
 		quotedImage := quotedMsg.GetImageMessage()
 		quotedVideo := quotedMsg.GetVideoMessage()
 		quotedText := extended.GetText()
+		messageSender := eventInfo.Info.Sender.User
 
 		imageMatch := captionIsCommand(eventInfo.Message.GetImageMessage().GetCaption())
 		videoMatch := captionIsCommand(eventInfo.Message.GetVideoMessage().GetCaption())
@@ -92,6 +94,11 @@ func eventHandler(evt interface{}) {
 					eventInfo.Message.VideoMessage = quotedVideo
 				}
 			}
+			fmt.Println(*sender)
+			fmt.Println(messageSender)
+			if *sender != "" && messageSender != *sender {
+				return
+			}
 			go handler.Run(client, eventInfo, *replyTo)
 		}
 	}
@@ -100,6 +107,7 @@ func eventHandler(evt interface{}) {
 func main() {
 	loglevel := flag.String("log-level", "INFO", "Set log level to one of (INFO/DEBUG)")
 	replyTo = flag.Bool("reply-to", false, "Set to true to highlight messages to respond to")
+	sender = flag.String("sender", "", "Set to number jid that you want to restrict responses to")
 	flag.Parse()
 	dbLog := waLog.Stdout("Database", *loglevel, true)
 	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite

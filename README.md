@@ -43,6 +43,7 @@ The following flags are available
 
 - `-log-level` : To switch between log verbosity between `INFO` and `DEBUG`
 - `-reply-to`  : Set to true if bot should quote original messages with reply
+- `-sender`    : Respond to only this jid e.g `234XXXXXXXXXX`
 
 
 ## Flow

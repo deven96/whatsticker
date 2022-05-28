@@ -107,7 +107,7 @@ func (handler *Image) Handle() *waProto.Message {
 		return nil
 	}
 
-	metadata.GenerateMetadata(handler.ConvertedPath, handler.MetadataPath)
+	metadata.GenerateMetadata(handler.ConvertedPath)
 
 	data, err = os.ReadFile(handler.ConvertedPath)
 	if err != nil {

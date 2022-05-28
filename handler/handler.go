@@ -22,9 +22,9 @@ const ImageFileSizeLimit = 2097000
 // seems not to animate
 const VideoFileSizeLimit = 1024000
 
-// VideoFileSecondsLimit sets video to be less than 5 seconds
+// VideoFileSecondsLimit sets video to be less than 7 seconds
 // or it no longer animates
-const VideoFileSecondsLimit = 5
+const VideoFileSecondsLimit = 7
 
 // Handler interface for multiple message types
 type Handler interface {

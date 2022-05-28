@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/mdp/qrterminal/v3 v3.0.0
-	go.mau.fi/whatsmeow v0.0.0-20220517205516-246a2007ca7f
+	go.mau.fi/whatsmeow v0.0.0-20220526084057-133d825afbab
 	google.golang.org/protobuf v1.28.0
 )
 

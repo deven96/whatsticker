@@ -57,7 +57,7 @@ func (handler *Video) Validate() error {
 	if video.GetSeconds() > VideoFileSecondsLimit {
 		failed := &waProto.Message{
 			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String("Your video is longer than 5 seconds"),
+				Text:        proto.String("Your video is longer than 7 seconds"),
 				ContextInfo: handler.ToReply,
 			},
 		}
@@ -130,7 +130,7 @@ func (handler *Video) Handle() *waProto.Message {
 		return nil
 	}
 
-	metadata.GenerateMetadata(handler.ConvertedPath, handler.MetadataPath)
+	metadata.GenerateMetadata(handler.ConvertedPath)
 
 	data, err = os.ReadFile(handler.ConvertedPath)
 	if err != nil {

@@ -3,3 +3,5 @@
 *.swp
 *.db
 images/
+videos/
+test.exif.tpl
