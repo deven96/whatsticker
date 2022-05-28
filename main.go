@@ -22,7 +22,10 @@ import (
 var client *whatsmeow.Client
 var replyTo *bool
 
-const command = "stickerize deven96"
+var commands = map[string]struct{}{
+	"stickerize deven96": {},
+	"stickerize":         {},
+}
 
 func loginNewClient() {
 	// No ID stored, new login
@@ -39,6 +42,11 @@ func loginNewClient() {
 			fmt.Println("Login event:", evt.Event)
 		}
 	}
+}
+
+func captionIsCommand(caption string) bool {
+	_, ok := commands[strings.TrimSpace(strings.ToLower(caption))]
+	return ok
 }
 
 func listenForCtrlC() {
@@ -64,10 +72,10 @@ func eventHandler(evt interface{}) {
 		quotedVideo := quotedMsg.GetVideoMessage()
 		quotedText := extended.GetText()
 
-		imageMatch := strings.ToLower(eventInfo.Message.GetImageMessage().GetCaption()) == command
-		videoMatch := strings.ToLower(eventInfo.Message.GetVideoMessage().GetCaption()) == command
+		imageMatch := captionIsCommand(eventInfo.Message.GetImageMessage().GetCaption())
+		videoMatch := captionIsCommand(eventInfo.Message.GetVideoMessage().GetCaption())
 		// check if quoted message with correct caption references media
-		quotedMatch := strings.ToLower(quotedText) == command &&
+		quotedMatch := captionIsCommand(quotedText) &&
 			(quotedImage != nil || quotedVideo != nil)
 
 		if imageMatch || videoMatch || quotedMatch {
