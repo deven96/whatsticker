@@ -96,9 +96,9 @@ func eventHandler(evt interface{}) {
 			}
 			fmt.Println(*sender)
 			fmt.Println(messageSender)
-			if *sender != "" && messageSender != *sender {
-				return
-			}
+			//      if *sender != "" && messageSender != *sender {
+			//        return
+			//      }
 			go handler.Run(client, eventInfo, *replyTo)
 		}
 	}
