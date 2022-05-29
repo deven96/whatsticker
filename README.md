@@ -3,10 +3,17 @@
 <p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
 A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize deven96</u></a></b>
 
+[![](assets/click.jpeg)](https://wa.me/19293792260)
+
 
 ## Usage
 
-### Requirements
+
+### Simple Requirements
+
+If you are not interested in running a copy of the project then feel free to use the whatsticker number provided. You can also add it to group chats and it will work the exact same way. There might be occasional downtime but except it gets blocked it should be pretty reliable
+
+### Technical Requirements
 
  - [Go 1.17](https://go.dev/)
  - [Docker Compose](https://docs.docker.com/compose/install/)
