@@ -142,7 +142,7 @@ func (handler *Image) SendResponse(message *waProto.Message) {
 		return
 	}
 	event := handler.Event
-	isgroupMessage := event.Info.MessageSource.IsGroup
+	isgroupMessage := event.Info.IsGroup
 	completed := &waProto.Message{
 		ExtendedTextMessage: &waProto.ExtendedTextMessage{
 			Text:        proto.String(CompletedMessage),
