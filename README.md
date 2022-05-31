@@ -73,9 +73,9 @@ The following flags are available
 * Initializes WA client (new credentials in db or uses existing)
 * Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [handler.Run()](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run)
 * Four possible messages trigger the core media handler
-  - Image with [caption](#caption)
-  - Video with [caption](#caption)
-  - GIF with [caption](#caption)
+  - Image with [caption](#caption) for `GroupChat Messages` or Image without caption for `Private Messages`
+  - Video with [caption](#caption) for `GroupChat Messages` or Video without caption for `Private Messages`
+  - GIF with [caption](#caption)   for `GroupChat Messages` or GIF without caption for `Private Messages`
   - Text matching correct caption that quotes an image/video/gif ( media type and content gets set to quoted media)
 * One of either [`Handler`](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=type%20Handler)  gets initialized based on media type
   - `Video/GIF` make use of [`Video{}`](https://github.com/deven96/whatsticker/blob/main/handler/video.go#:~:text=type%20Video)
