@@ -82,7 +82,7 @@ func eventHandler(evt interface{}) {
 			(quotedImage != nil || quotedVideo != nil)
 		isPrivateMedia := (quotedImage != nil || quotedVideo != nil) && !groupMessage
 		if imageMatch || videoMatch || quotedMatch || isPrivateMedia {
-			if quotedMatch || isPrivateMedia {
+			if quotedMatch {
 				// replace the actual message struct with quoted media
 				if quotedImage != nil {
 					eventInfo.Info.MediaType = "image"
