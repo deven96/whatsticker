@@ -73,6 +73,7 @@ func eventHandler(evt interface{}) {
 		quotedVideo := quotedMsg.GetVideoMessage()
 		quotedText := extended.GetText()
 		messageSender := eventInfo.Info.Sender.User
+		groupMessage := eventInfo.Info.MessageSource.IsGroup
 
 		imageMatch := captionIsCommand(eventInfo.Message.GetImageMessage().GetCaption())
 		videoMatch := captionIsCommand(eventInfo.Message.GetVideoMessage().GetCaption())
@@ -81,7 +82,7 @@ func eventHandler(evt interface{}) {
 			(quotedImage != nil || quotedVideo != nil)
 
 		if imageMatch || videoMatch || quotedMatch {
-			if quotedMatch {
+			if quotedMatch || !groupMessage {
 				// replace the actual message struct with quoted media
 				if quotedImage != nil {
 					eventInfo.Info.MediaType = "image"
