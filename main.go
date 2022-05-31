@@ -80,7 +80,7 @@ func eventHandler(evt interface{}) {
 		// check if quoted message with correct caption references media
 		quotedMatch := captionIsCommand(quotedText) &&
 			(quotedImage != nil || quotedVideo != nil)
-		isPrivateMedia := (quotedImage != nil || quotedVideo != nil) && !groupMessage
+		isPrivateMedia := (eventInfo.Message.GetImageMessage() != nil || eventInfo.Message.GetVideoMessage() != nil) && !groupMessage
 		if imageMatch || videoMatch || quotedMatch || isPrivateMedia {
 			if quotedMatch {
 				// replace the actual message struct with quoted media
