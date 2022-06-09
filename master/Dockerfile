@@ -6,6 +6,6 @@ ADD https://github.com/ufoscout/docker-compose-wait/releases/download/$WAIT_VERS
 RUN chmod +x /wait
 COPY go.mod main.go ./
 ADD handler ./handler
-ADD convert ./convert
+ADD task ./task
 RUN go mod tidy
 ENTRYPOINT ["go", "run", "main.go", "-log-level", "DEBUG"]

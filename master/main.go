@@ -11,8 +11,8 @@ import (
 	"time"
 
 	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/convert"
 	"github.com/deven96/whatsticker/handler"
+	"github.com/deven96/whatsticker/task"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/mdp/qrterminal/v3"
@@ -140,7 +140,7 @@ func main() {
 	client.EnableAutoReconnect = true
 	client.AutoTrustIdentity = true
 
-	complete := &convert.ConvertConsumer{
+	complete := &task.StickerConsumer{
 		Client: client,
 	}
 	errChan := make(chan error)

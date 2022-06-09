@@ -1,4 +1,4 @@
-package convert
+package task
 
 import (
 	"context"
@@ -28,11 +28,11 @@ type ConvertTask struct {
 	IsGroup       bool
 }
 
-type ConvertConsumer struct {
+type StickerConsumer struct {
 	Client *whatsmeow.Client
 }
 
-func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
+func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	var task ConvertTask
 	if err := json.Unmarshal([]byte(delivery.Payload()), &task); err != nil {
 		// handle json error
