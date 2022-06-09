@@ -8,6 +8,7 @@ A Whatsapp bot that turns pictures, small videos and gifs into stickers with the
 
 ## Usage
 
+https://user-images.githubusercontent.com/23453888/172902050-7e039696-2b31-469f-8d39-c900b80fae4b.mp4
 
 ### Simple Requirements
 
@@ -40,7 +41,6 @@ If you are not interested in running a copy of the project then feel free to use
  - Open any chat (Personal/Group) where the logged in number is present
  - Send media with [caption](#caption) and number should respond with sticker
 
-  ![Example response](assets/example_video.mp4)
 
 **WARNING**: `db/` folder on root will contain `examplestore.db` which docker-compose expects to load as a volume. Do not create a public image using this folder or commit to version control as it can be used to impersonate you
 
