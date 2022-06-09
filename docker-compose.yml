@@ -1,11 +1,20 @@
 version: "3.9"
+
+x-common-variables: &common-variables
+  WAIT_HOSTS: redis:6379
+  WAIT_HOSTS_TIMEOUT: 300
+  WAIT_SLEEP_INTERVAL: 10
+  WAIT_HOST_CONNECT_TIMEOUT: 30
+  CONVERT_TO_WEBP_QUEUE: convert
+  SEND_WEBP_TO_WHATSAPP_QUEUE: complete
+
 services:
   whatsticker-master:
     build: ./master
     restart: always
     depends_on:
       - redis
-    command: bash -c "/wait && go run main.go -log-level DEBUG -sender 19293792260"
+    command: bash -c "/wait && go run main.go -log-level DEBUG"
     volumes:
       - type: bind
         source: ./master/db
@@ -13,10 +22,7 @@ services:
       - images:/project/images
       - videos:/project/videos
     environment:
-      - WAIT_HOSTS=redis:6379
-      - WAIT_HOSTS_TIMEOUT=300
-      - WAIT_SLEEP_INTERVAL=10
-      - WAIT_HOST_CONNECT_TIMEOUT=30
+      <<: *common-variables
   whatsticker-worker:
     build: ./worker
     restart: always
@@ -30,10 +36,7 @@ services:
       mode: replicated
       replicas: 3
     environment:
-      - WAIT_HOSTS=redis:6379
-      - WAIT_HOSTS_TIMEOUT=300
-      - WAIT_SLEEP_INTERVAL=10
-      - WAIT_HOST_CONNECT_TIMEOUT=30
+      <<: *common-variables
   redis:
     restart: always
     image: redis

@@ -59,7 +59,7 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 		}
 		fmt.Printf("Q value is %d\n", qValue)
 		commandString := fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800 %s", task.MediaPath, qValue, task.ConvertedPath)
-		cmd := exec.Command("bash", "-c", commandString)
+		cmd = exec.Command("bash", "-c", commandString)
 		var outb, errb bytes.Buffer
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
@@ -75,6 +75,7 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 
 	metadata.GenerateMetadata(task.ConvertedPath)
 	consumer.PushTo.PublishBytes([]byte(delivery.Payload()))
+	os.Remove(task.MediaPath)
 
 	if err := delivery.Ack(); err != nil {
 		// handle ack error

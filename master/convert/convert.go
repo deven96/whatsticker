@@ -83,4 +83,5 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	if task.IsGroup {
 		consumer.Client.SendMessage(chat, "", completed)
 	}
+	os.Remove(task.ConvertedPath)
 }

@@ -20,15 +20,16 @@ func listenForCtrlC() {
 
 func main() {
 	errChan := make(chan error)
-	connectionString := "redis:6379"
+	connectionString := os.Getenv("WAIT_HOSTS")
 	connection, err := rmq.OpenConnection("worker connection", "tcp", connectionString, 1, errChan)
 	if err != nil {
 		log.Print("Failed to connect to redis queue")
 		return
 	}
-	completeQueue, _ := connection.OpenQueue("complete")
-	convertQueue, _ := connection.OpenQueue("convert")
+	completeQueue, _ := connection.OpenQueue(os.Getenv("SEND_TO_WHATSAPP_QUEUE"))
+	convertQueue, _ := connection.OpenQueue(os.Getenv("CONVERT_TO_WEBP_QUEUE"))
 	convert := &convert.ConvertConsumer{
+		// set to push to completeQueue when done
 		PushTo: completeQueue,
 	}
 	convertQueue.StartConsuming(10, time.Second)

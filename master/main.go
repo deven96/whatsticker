@@ -144,10 +144,10 @@ func main() {
 		Client: client,
 	}
 	errChan := make(chan error)
-	connectionString := "redis:6379"
+	connectionString := os.Getenv("WAIT_HOSTS")
 	connection, _ := rmq.OpenConnection("master connection", "tcp", connectionString, 1, errChan)
-	convertQueue, _ = connection.OpenQueue("convert")
-	completeQueue, _ := connection.OpenQueue("complete")
+	convertQueue, _ = connection.OpenQueue(os.Getenv("CONVERT_TO_WEBP_QUEUE"))
+	completeQueue, _ := connection.OpenQueue(os.Getenv("SEND_TO_WHATSAPP_QUEUE"))
 	completeQueue.StartConsuming(10, time.Second)
 	completeQueue.AddConsumer("complete-consumer", complete)
 
