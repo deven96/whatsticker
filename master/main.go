@@ -8,7 +8,10 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
+	rmq "github.com/adjust/rmq/v4"
+	"github.com/deven96/whatsticker/convert"
 	"github.com/deven96/whatsticker/handler"
 	_ "github.com/mattn/go-sqlite3"
 
@@ -22,10 +25,20 @@ import (
 var client *whatsmeow.Client
 var replyTo *bool
 var sender *string
+var convertQueue rmq.Queue
 
 var commands = map[string]struct{}{
 	"stickerize deven96": {},
 	"stickerize":         {},
+}
+
+type CompletedTask struct {
+	MediaPath     string
+	ConvertedPath string
+	DataLen       int
+	MediaType     string
+	Chat          string
+	IsGroup       bool
 }
 
 func loginNewClient() {
@@ -100,7 +113,7 @@ func eventHandler(evt interface{}) {
 			if *sender != "" && messageSender != *sender {
 				return
 			}
-			go handler.Run(client, eventInfo, *replyTo)
+			go handler.Run(client, eventInfo, *replyTo, convertQueue)
 		}
 	}
 }
@@ -126,6 +139,17 @@ func main() {
 	client.AddEventHandler(eventHandler)
 	client.EnableAutoReconnect = true
 	client.AutoTrustIdentity = true
+
+	complete := &convert.ConvertConsumer{
+		Client: client,
+	}
+	errChan := make(chan error)
+	connectionString := "redis:6379"
+	connection, _ := rmq.OpenConnection("master connection", "tcp", connectionString, 1, errChan)
+	convertQueue, _ = connection.OpenQueue("convert")
+	completeQueue, _ := connection.OpenQueue("complete")
+	completeQueue.StartConsuming(10, time.Second)
+	completeQueue.AddConsumer("complete-consumer", complete)
 
 	if client.Store.ID == nil {
 		loginNewClient()

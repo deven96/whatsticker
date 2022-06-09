@@ -1,9 +1,43 @@
 version: "3.9"
 services:
-  whatsticker:
-    build: .
+  whatsticker-master:
+    build: ./master
     restart: always
+    depends_on:
+      - redis
+    command: bash -c "/wait && go run main.go -log-level DEBUG -sender 19293792260"
     volumes:
       - type: bind
-        source: ./db
+        source: ./master/db
         target: /project/db
+      - images:/project/images
+      - videos:/project/videos
+    environment:
+      - WAIT_HOSTS=redis:6379
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=10
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+  whatsticker-worker:
+    build: ./worker
+    restart: always
+    depends_on:
+      - redis
+    command: bash -c "/wait && go run main.go"
+    volumes:
+      - images:/project/images
+      - videos:/project/videos
+    deploy:
+      mode: replicated
+      replicas: 3
+    environment:
+      - WAIT_HOSTS=redis:6379
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=10
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+  redis:
+    restart: always
+    image: redis
+
+volumes:
+  images:
+  videos:

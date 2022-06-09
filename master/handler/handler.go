@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 
+	rmq "github.com/adjust/rmq/v4"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -11,9 +12,6 @@ import (
 
 // WebPFormat is the extension of webp
 const WebPFormat = ".webp"
-
-// CompletedMessage is the proto message sent when done
-const CompletedMessage = "Done Stickerizing"
 
 // ImageFileSizeLimit limits file sizes to be converted to 2MB(Mebibytes) in Bytes
 const ImageFileSizeLimit = 2097000
@@ -34,15 +32,11 @@ type Handler interface {
 	// also sends message to client about issue
 	Validate() error
 	// Handle : obtains the message to be sent as response
-	Handle() *waProto.Message
-	// SendResponse : sends the response
-	SendResponse(message *waProto.Message)
-	// CleanUp : cleans up any saved files to prevent bloat
-	CleanUp()
+	Handle(pushTo rmq.Queue)
 }
 
 // Run : the appropriate handler using the event type
-func Run(client *whatsmeow.Client, event *events.Message, replyTo bool) {
+func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, queue rmq.Queue) {
 	var handle Handler
 	fmt.Printf("Running for %s type\n", event.Info.MediaType)
 	switch event.Info.MediaType {
@@ -57,21 +51,13 @@ func Run(client *whatsmeow.Client, event *events.Message, replyTo bool) {
 		client.SendMessage(event.Info.Chat, "", responseMessage)
 		return
 	}
-	defer handle.CleanUp()
 	handle.SetUp(client, event, replyTo)
 	invalid := handle.Validate()
 	if invalid != nil {
 		fmt.Printf("%s\n", invalid)
 		return
 	}
-	message := handle.Handle()
-	if message == nil {
-		fmt.Println("Could not get sticker message to send")
-		responseMessage := &waProto.Message{Conversation: proto.String("Sorry I ran into troubles stickerizing that")}
-		client.SendMessage(event.Info.Chat, "", responseMessage)
-		return
-	}
-	handle.SendResponse(message)
+	handle.Handle(queue)
 }
 
 //func RunTest() {
