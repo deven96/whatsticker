@@ -35,16 +35,16 @@ If you are not interested in running a copy of the project then feel free to use
 
  - Link device as explained on [WhatsApp FAQ](https://faq.whatsapp.com/web/download-and-installation/how-to-link-a-device/)
 
- A folder `db/` will be automatically created containing sqlite db with credentials. No need to login over and over except logged out on main device. You can copy this folder to target machine and it still works
+ A folder `master/db/` will be automatically created containing sqlite db with credentials. No need to login over and over except logged out on main device. You can copy this folder to target machine and it still works
 
 ### Running The Bot
 
- - Ensure `db/examplestore.db` exists and run `docker-compose up`
+ - Ensure `master/db/examplestore.db` exists and run `docker-compose up`
  - Open any chat (Personal/Group) where the logged in number is present
  - Send media with [caption](#caption) and number should respond with sticker
 
 
-**WARNING**: `db/` folder on root will contain `examplestore.db` which docker-compose expects to load as a volume. Do not create a public image using this folder or commit to version control as it can be used to impersonate you
+**WARNING**: `master/db/` folder will contain `examplestore.db` which docker-compose expects to load as a volume. Do not create a public image using this folder or commit to version control as it can be used to impersonate you
 
 ## CLI Flags
 
