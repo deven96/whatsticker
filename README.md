@@ -1,7 +1,9 @@
 # Whatsticker
 
+
 <p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
 A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize</u></a></b>
+
 
 [Chat with Whatsticker](https://wa.me/19293792260)
 
