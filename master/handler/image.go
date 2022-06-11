@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 
 	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/convert"
+	"github.com/deven96/whatsticker/task"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -91,7 +91,7 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 	}
 	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
-	convertTask := &convert.ConvertTask{
+	convertTask := &task.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
 		DataLen:       len(data),
