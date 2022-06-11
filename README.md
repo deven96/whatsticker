@@ -1,13 +1,16 @@
 # Whatsticker
 
-<p align="left"><img src="https://raw.githubusercontent.com/deven96/whatsticker/main/assets/logo.jpg" alt="whatsticker" height="100px"></p>
-A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize deven96</u></a></b>
+
+<p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
+A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize</u></a></b>
+
 
 [Chat with Whatsticker](https://wa.me/19293792260)
 
 
 ## Usage
 
+https://user-images.githubusercontent.com/23453888/172902050-7e039696-2b31-469f-8d39-c900b80fae4b.mp4
 
 ### Simple Requirements
 
@@ -40,7 +43,6 @@ If you are not interested in running a copy of the project then feel free to use
  - Open any chat (Personal/Group) where the logged in number is present
  - Send media with [caption](#caption) and number should respond with sticker
 
-  ![Example response](https://user-images.githubusercontent.com/23453888/169394201-f9043f31-de33-469d-bf5b-ae1d09acd258.jpg)
 
 **WARNING**: `db/` folder on root will contain `examplestore.db` which docker-compose expects to load as a volume. Do not create a public image using this folder or commit to version control as it can be used to impersonate you
 
@@ -56,42 +58,39 @@ The following flags are available
 ## Flow
 
 ```
-|___ metadata                        # Customizes sticker exif information
-|    |__ metadata.go
-|    |__ raw.exif.tpl
+|___ worker                              # Container for converting media to stickers (scaled to handle load)
+|    |__ metadata                        # Sets sticker exif info
+|    |   |__ metadata.go
+|    |   |__ raw.exif
+|    |
+|    |__ convert                         # gets media info off the convert queue and converts to webp and passes it to complete queue
+|    |   |__ convert.go
+|    |
+|    |__ Dockerfile
+|    |__ main.go
 |
-|├── handler                         # Contains logic for running sticker procedure on images/video
-|    |___ handler.go
-|    |___ image.go
-|    |___ video.go
+|___ master                              # Container that has whatsapp specific information (only one instance possible)
+|    |__ handler                         # Run validation on whatsapp media type events and pass to convert queue
+|    |   |__ handler.go
+|    |   |__ image.go
+|    |   |__ video.go
+|    |
+|    |___ task                           # takes info off the complete queue, uploads webP to whatsapp server and sends as sticker
+|    |    |__ upload.go
+|    |
+|    |___ Dockerfile
+|    |├── main.go                        # Login to WA client. sets up whatsapp event handler and subscribe to queues
 |
+|__  docker-compose                      # Runs redis for queues, volumes for media, spins multiple workers and a worker
 |├── LICENSE
-|├── main.go                         # Login to WA client and sets up event handler
 |└── README.md
 ```
-
-* Initializes WA client (new credentials in db or uses existing)
-* Sets up `eventHandler` to monitor all incoming events and passes WA client to media handler [handler.Run()](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=Run)
-* Four possible messages trigger the core media handler
-  - Image with [caption](#caption) for `GroupChat Messages` or Image without caption for `Private Messages`
-  - Video with [caption](#caption) for `GroupChat Messages` or Video without caption for `Private Messages`
-  - GIF with [caption](#caption)   for `GroupChat Messages` or GIF without caption for `Private Messages`
-  - Text matching correct caption that quotes an image/video/gif ( media type and content gets set to quoted media)
-* One of either [`Handler`](https://github.com/deven96/whatsticker/blob/main/handler/handler.go#:~:text=type%20Handler)  gets initialized based on media type
-  - `Video/GIF` make use of [`Video{}`](https://github.com/deven96/whatsticker/blob/main/handler/video.go#:~:text=type%20Video)
-  - `Image` makes use of [`Image{}`](https://github.com/deven96/whatsticker/blob/main/handler/image.go#:~:text=type%20Image)
-* `Handler` has some methods that get run
-  - _SetUp_ : set client to WA client, reply to option and create folders for media if not exist
-  - _Validate_: enforce some constraints on media size/length
-  - _Handle_: Downloads the raw media -> Converts media to webP (as WhatsApp stickers are wrappers around webp images) using the specified codec -> Appends exif information to webp Image -> Uploads it to WA -> Return a sticker message
-  - _SendResponse_: Sends sticker to originating chat
-  - _CleanUp_: Remove raw and converted media from file system
 
 ## Limits/Issues
 
  - [ ] _Media sizes/length enforced by code_
  - [ ] _Some sticker results for videos are not animated (WebP size exceeds 1MB)_
- - [ ] _Sometimes original media cannot be downloaded (especially for quoting older media messages with caption)_
+ - [X] _Sometimes original media cannot be downloaded (especially for quoting older media messages with caption)_
  - [ ] _reply-to flag causes iOS users to be [incorrectly tagged](https://github.com/tulir/whatsmeow/issues/135)_
 
 ## License
@@ -106,3 +105,4 @@ Library/Resource | Use
 [ffmpeg](https://ffmpeg.org) | A complete cross platform solution to record, convert and stream video (and audio).
 [cwebp](https://developers.google.com/speed/webp/docs/cwebp) | Compress an image file into WebP file
 [webpmux](https://developers.google.com/speed/webp/docs/webpmux) | Write exif file to set metadata on stickers
+
