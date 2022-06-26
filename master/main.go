@@ -8,8 +8,11 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
+	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/handler"
+	"github.com/deven96/whatsticker/task"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/mdp/qrterminal/v3"
@@ -22,10 +25,20 @@ import (
 var client *whatsmeow.Client
 var replyTo *bool
 var sender *string
+var convertQueue rmq.Queue
 
 var commands = map[string]struct{}{
 	"stickerize deven96": {},
 	"stickerize":         {},
+}
+
+type CompletedTask struct {
+	MediaPath     string
+	ConvertedPath string
+	DataLen       int
+	MediaType     string
+	Chat          string
+	IsGroup       bool
 }
 
 func loginNewClient() {
@@ -79,8 +92,8 @@ func eventHandler(evt interface{}) {
 		// check if quoted message with correct caption references media
 		quotedMatch := captionIsCommand(quotedText) &&
 			(quotedImage != nil || quotedVideo != nil)
-
-		if imageMatch || videoMatch || quotedMatch {
+		isPrivateMedia := (eventInfo.Message.GetImageMessage() != nil || eventInfo.Message.GetVideoMessage() != nil) && !groupMessage
+		if imageMatch || videoMatch || quotedMatch || isPrivateMedia {
 			if quotedMatch {
 				// replace the actual message struct with quoted media
 				if quotedImage != nil {
@@ -99,7 +112,7 @@ func eventHandler(evt interface{}) {
 			if *sender != "" && messageSender != *sender {
 				return
 			}
-			go handler.Run(client, eventInfo, *replyTo)
+			go handler.Run(client, eventInfo, *replyTo, convertQueue)
 		}
 	}
 }
@@ -125,6 +138,17 @@ func main() {
 	client.AddEventHandler(eventHandler)
 	client.EnableAutoReconnect = true
 	client.AutoTrustIdentity = true
+
+	complete := &task.StickerConsumer{
+		Client: client,
+	}
+	errChan := make(chan error)
+	connectionString := os.Getenv("WAIT_HOSTS")
+	connection, _ := rmq.OpenConnection("master connection", "tcp", connectionString, 1, errChan)
+	convertQueue, _ = connection.OpenQueue(os.Getenv("CONVERT_TO_WEBP_QUEUE"))
+	completeQueue, _ := connection.OpenQueue(os.Getenv("SEND_TO_WHATSAPP_QUEUE"))
+	completeQueue.StartConsuming(10, time.Second)
+	completeQueue.AddConsumer("complete-consumer", complete)
 
 	if client.Store.ID == nil {
 		loginNewClient()
