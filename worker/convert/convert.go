@@ -13,6 +13,13 @@ import (
 	"github.com/deven96/whatsticker/metadata"
 )
 
+const videoQuality = 35
+
+// 975kb
+const maxFileSize = 975000
+
+const animatableVideoLen = 1000000
+
 type ConvertTask struct {
 	MediaPath     string
 	ConvertedPath string
@@ -28,7 +35,6 @@ type ConvertConsumer struct {
 
 func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	var task ConvertTask
-	var cmd *exec.Cmd
 	if err := json.Unmarshal([]byte(delivery.Payload()), &task); err != nil {
 		// handle json error
 		if err := delivery.Reject(); err != nil {
@@ -39,35 +45,16 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	}
 	// perform task
 	log.Printf("performing task %#v", task)
+	var err error
 	switch task.MediaType {
 	case "image":
-		// FIXME: converting to webp's 512x512 skews aspect ratio
-		// So Find a way to convert to 512x512 while maintaining perspective before cwebp convertion
-
-		// Convert Image to WebP
-		// Using https://developers.google.com/speed/webp/docs/cwebp
-		cmd = exec.Command("cwebp", task.MediaPath, "-resize", "0", "600", "-o", task.ConvertedPath)
+		err = convertImage(task)
 	case "video":
-		var qValue int
-		switch {
-		case task.DataLen < 300000:
-			qValue = 20
-		case task.DataLen < 400000:
-			qValue = 10
-		default:
-			qValue = 5
-		}
-		fmt.Printf("Q value is %d\n", qValue)
-		commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800  %s", task.MediaPath, qValue, task.ConvertedPath)
-		cmd = exec.Command("bash", "-c", commandString)
-		var outb, errb bytes.Buffer
-		cmd.Stdout = &outb
-		cmd.Stderr = &errb
+		err = convertVideo(task)
 	default:
 		return
 	}
 
-	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Failed to Convert %s to WebP %s", task.MediaType, err)
 		return
@@ -97,4 +84,67 @@ func getImageDimensions(path string) (int, int) {
 		fmt.Println("Impossible to open the file:", err)
 	}
 	return width, height
+}
+
+func isAnimateable(path string) bool {
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Printf("can not check if video length is animatable: %v", err)
+	}
+	if len(file) > animatableVideoLen {
+		return false
+	}
+	return true
+}
+
+func convertImage(task ConvertTask) error {
+
+	// FIXME: converting to webp's 512x512 skews aspect ratio
+	// So Find a way to convert to 512x512 while maintaining perspective before cwebp convertion
+
+	// Convert Image to WebP
+	// Using https://developers.google.com/speed/webp/docs/cwebp
+	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "0", "600", "-o", task.ConvertedPath)
+	err := cmd.Run()
+
+	return err
+}
+
+func convertVideo(task ConvertTask) error {
+
+	var qValue int
+	switch {
+	case task.DataLen < 350000:
+		qValue = 20
+	case task.DataLen < 650000:
+		qValue = 15
+	default:
+		qValue = 12
+	}
+	fmt.Printf("Q value is %d\n", qValue)
+	commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800  %s", task.MediaPath, qValue, task.ConvertedPath)
+	cmd := *exec.Command("bash", "-c", commandString)
+	var outb, errb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	err := cmd.Run()
+
+	// validate converted video is the right size
+	if !(isAnimateable(task.ConvertedPath)) {
+		fmt.Println("Reconverting video..\n")
+		os.Remove(task.ConvertedPath)
+		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=800:800' -quality %d %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
+		cmd := *exec.Command("bash", "-c", commandString)
+		var outb, errb bytes.Buffer
+		cmd.Stdout = &outb
+		cmd.Stderr = &errb
+
+		err = cmd.Run()
+
+	}
+
+	return err
+
 }
