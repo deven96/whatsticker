@@ -134,8 +134,7 @@ func convertVideo(task ConvertTask) error {
 	// validate converted video is the right size
 	if !(isAnimateable(task.ConvertedPath)) {
 		fmt.Println("Reconverting video..\n")
-		os.Remove(task.ConvertedPath)
-		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=800:800' -quality %d %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
+		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=800:800' -quality %d -y %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
 		cmd := *exec.Command("bash", "-c", commandString)
 		var outb, errb bytes.Buffer
 		cmd.Stdout = &outb
