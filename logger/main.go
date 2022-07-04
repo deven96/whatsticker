@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/metrics"
+	"github.com/derhnyel/whatsticker/metrics"
 )
 
 func listenForCtrlC() {
@@ -26,10 +26,10 @@ func main() {
 	}
 
 	loggingQueue, _ := connection.OpenQueue(os.Getenv("LOG_METRIC_QUEUE"))
-	gauges := metrics.newGauges()
-	registry := metrics.newRegistry()
+	gauges := metrics.NewGauges()
+	registry := metrics.NewRegistry()
 
-	register := &metrics.initialize(&registry, gauges)
+	register := &metrics.Initialize(&registry, gauges)
 
 	loggingQueue.StartConsuming(10, time.Second)
 	loggingQueue.AddConsumer("logging-consumer", register)

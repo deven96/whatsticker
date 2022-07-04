@@ -30,7 +30,7 @@ type Register struct {
 	Pusher   *push.Pusher
 }
 
-func newGauges() StickerizationGauges {
+func NewGauges() StickerizationGauges {
 
 	isgroupQueued := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "Whatsticker",
@@ -76,11 +76,11 @@ func newGauges() StickerizationGauges {
 	}
 }
 
-func newRegistry() *prometheus.Registry {
+func NewRegistry() *prometheus.Registry {
 	return prometheus.NewRegistry()
 }
 
-func initialize(registry *prometheus.Registry, gauges StickerizationGauges) Register {
+func Initialize(registry *prometheus.Registry, gauges StickerizationGauges) Register {
 	registry.MustRegister(
 		gauges.CountryGauge,
 		gauges.GroupMessagesGauge,
@@ -98,13 +98,13 @@ func initialize(registry *prometheus.Registry, gauges StickerizationGauges) Regi
 
 }
 
-func pushToGateway(pusher *push.Pusher) {
+func PushToGateway(pusher *push.Pusher) {
 	if err := pusher.Add(); err != nil {
 		fmt.Println("Could not push to Pushgateway:", err)
 	}
 }
 
-func checkAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges *StickerizationGauges) {
+func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges *StickerizationGauges) {
 	if stickerMetric.IsGroupMessage {
 		stickerGauges.GroupMessagesGauge.Inc()
 	} else {

@@ -5,7 +5,7 @@ import (
 	"log"
 
 	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/metrics"
+	"github.com/derhnyel/whatsticker/metrics"
 )
 
 func (consumer *metrics.Register) Consume(delivery rmq.Delivery) {
@@ -19,8 +19,8 @@ func (consumer *metrics.Register) Consume(delivery rmq.Delivery) {
 		return
 	}
 
-	metrics.checkAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
-	metrics.pushToGateway(&consumer.Pusher)
+	metrics.CheckAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
+	metrics.PushToGateway(&consumer.Pusher)
 	if err := delivery.Ack(); err != nil {
 		// handle ack error
 		return

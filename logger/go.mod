@@ -1,4 +1,4 @@
-module github.com/deven96/whatsticker
+module github.com/derhnyel/whatsticker
 
 go 1.17
 
