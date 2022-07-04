@@ -39,6 +39,8 @@ type CompletedTask struct {
 	MediaType     string
 	Chat          string
 	IsGroup       bool
+	MessageSender string
+	TimeOfRequest string
 }
 
 func loginNewClient() {
@@ -86,6 +88,7 @@ func eventHandler(evt interface{}) {
 		quotedVideo := quotedMsg.GetVideoMessage()
 		quotedText := extended.GetText()
 		messageSender := eventInfo.Info.Sender.User
+		groupMessage := eventInfo.Info.IsGroup
 
 		imageMatch := captionIsCommand(eventInfo.Message.GetImageMessage().GetCaption())
 		videoMatch := captionIsCommand(eventInfo.Message.GetVideoMessage().GetCaption())

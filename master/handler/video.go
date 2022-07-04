@@ -96,6 +96,8 @@ func (handler *Video) Handle(pushTo rmq.Queue) {
 		fmt.Printf("Failed to save video")
 		return
 	}
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	convertTask := &task.ConvertTask{
@@ -105,6 +107,8 @@ func (handler *Video) Handle(pushTo rmq.Queue) {
 		MediaType:     "video",
 		Chat:          chatBytes,
 		IsGroup:       isgroupMessage,
+		MessageSender: messageSender,
+		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	pushTo.PublishBytes(taskBytes)

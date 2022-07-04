@@ -26,6 +26,8 @@ type ConvertTask struct {
 	MediaType     string
 	Chat          []byte
 	IsGroup       bool
+	MessageSender string
+	TimeOfRequest string
 }
 
 type StickerConsumer struct {

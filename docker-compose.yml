@@ -28,6 +28,7 @@ services:
     restart: always
     depends_on:
       - redis
+      - metrics
     command: bash -c "/wait && go run main.go"
     volumes:
       - images:/project/images
@@ -37,9 +38,26 @@ services:
       replicas: 3
     environment:
       <<: *common-variables
+  logger:
+    build: ./logger
+    restart: always
+    depends_on:
+      - redis
+      - metrics
+    command: bash -c "/wait && go run main.go"
+    deploy:
+      mode: replicated
+      replicas: 3
+    environment:
+      <<: *common-variables
   redis:
     restart: always
     image: redis
+  metrics:
+    image: prom/pushgateway
+    restart: always
+    ports: 
+      - 9091 
 
 volumes:
   images:

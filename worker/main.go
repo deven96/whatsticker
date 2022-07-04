@@ -28,10 +28,15 @@ func main() {
 	}
 	completeQueue, _ := connection.OpenQueue(os.Getenv("SEND_TO_WHATSAPP_QUEUE"))
 	convertQueue, _ := connection.OpenQueue(os.Getenv("CONVERT_TO_WEBP_QUEUE"))
+	loggingQueue, _ := connection.OpenQueue(os.Getenv("LOG_METRIC_QUEUE"))
+
 	convert := &convert.ConvertConsumer{
 		// set to push to completeQueue when done
-		PushTo: completeQueue,
+		//set to push metrics to loggingQueue when done
+		PushTo:        completeQueue,
+		PushMetricsTo: loggingQueue,
 	}
+
 	convertQueue.StartConsuming(10, time.Second)
 	convertQueue.AddConsumer("convert-consumer", convert)
 	log.Printf("Starting Queue on %s", connectionString)

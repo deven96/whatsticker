@@ -81,6 +81,7 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 		fmt.Printf("Failed to download image: %v\n", err)
 		return
 	}
+
 	exts, _ := mime.ExtensionsByType(image.GetMimetype())
 	handler.RawPath = fmt.Sprintf("images/raw/%s%s", event.Info.ID, exts[0])
 	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", event.Info.ID, WebPFormat)
@@ -89,6 +90,9 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 		fmt.Printf("Failed to save image: %v", err)
 		return
 	}
+
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	convertTask := &task.ConvertTask{
@@ -98,6 +102,8 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 		MediaType:     "image",
 		Chat:          chatBytes,
 		IsGroup:       isgroupMessage,
+		MessageSender: messageSender,
+		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	pushTo.PublishBytes(taskBytes)

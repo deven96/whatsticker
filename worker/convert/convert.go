@@ -8,9 +8,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/metadata"
+	"github.com/dongri/phonenumber"
 )
 
 type ConvertTask struct {
@@ -20,10 +22,42 @@ type ConvertTask struct {
 	MediaType     string
 	Chat          []byte
 	IsGroup       bool
+	MessageSender string
+	TimeOfRequest string //time.Time
+}
+
+type StickerizationMetric struct {
+	InitialMediaLength int
+	FinalMediaLength   int
+	MediaType          string
+	IsGroupMessage     bool
+	Country            string
+	TimeOfRequest      string
 }
 
 type ConvertConsumer struct {
-	PushTo rmq.Queue
+	PushTo        rmq.Queue
+	PushMetricsTo rmq.Queue
+}
+
+func extractCountry(number string) string {
+	phoneNumber := strings.Trim(number, "+")
+	country := phonenumber.GetISO3166ByNumber(phoneNumber, true)
+	fmt.Println(country.CountryName)
+
+	return country.CountryName
+
+}
+
+func getDataLength(filePath string) int {
+
+	data, err := os.ReadFile(filePath)
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return len(data)
 }
 
 func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
@@ -73,14 +107,31 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 		return
 	}
 
+	//Function to Get file lenght
+	convertedDataLength := getDataLength(task.ConvertedPath)
+	senderCountry := extractCountry(task.MessageSender)
+
 	metadata.GenerateMetadata(task.ConvertedPath)
 	consumer.PushTo.PublishBytes([]byte(delivery.Payload()))
+
 	os.Remove(task.MediaPath)
 
 	if err := delivery.Ack(); err != nil {
 		// handle ack error
 		return
 	}
+
+	//Push Metrics
+	stickerMetric := &StickerizationMetric{
+		InitialMediaLength: task.DataLen,
+		FinalMediaLength:   convertedDataLength,
+		MediaType:          task.MediaType,
+		IsGroupMessage:     task.IsGroup,
+		Country:            senderCountry,
+		TimeOfRequest:      task.TimeOfRequest,
+	}
+	metricsBytes, _ := json.Marshal(stickerMetric)
+	consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
 }
 
 // FIXME: Probably use this image dimensions to find a way

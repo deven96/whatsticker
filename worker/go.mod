@@ -2,7 +2,10 @@ module github.com/deven96/whatsticker
 
 go 1.17
 
-require github.com/adjust/rmq/v4 v4.0.5
+require (
+	github.com/adjust/rmq/v4 v4.0.5
+	github.com/dongri/phonenumber v0.0.0-20220127125919-1e58a2b4cf97
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
