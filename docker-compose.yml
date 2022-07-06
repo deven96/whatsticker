@@ -43,25 +43,14 @@ services:
     restart: always
     depends_on:
       - redis
-      - metrics
     command: bash -c "/wait && go run main.go"
     environment:
       <<: *common-variables
+    ports: 
+      - "9091:9091"
   redis:
     restart: always
     image: redis
-  metrics:
-    image: prom/pushgateway
-    command: ["--persistence.file","/tmp/whatsticker.metrics"]
-    restart: always
-    ports: 
-      - "9091:9091" 
-    expose:
-      - "9091"
-    volumes:
-      - type: bind
-        source: ./whatsticker.metrics
-        target: /tmp/whatsticker.metrics
 volumes:
   images:
   videos:

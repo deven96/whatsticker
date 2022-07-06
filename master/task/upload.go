@@ -26,7 +26,7 @@ type StickerizationMetric struct {
 	IsGroupMessage     bool
 	MessageSender      string
 	TimeOfRequest      string
-	Validation         bool
+	Validated          bool
 }
 type ConvertTask struct {
 	MediaPath     string
@@ -38,21 +38,9 @@ type ConvertTask struct {
 	MessageSender string
 	TimeOfRequest string
 }
-
 type StickerConsumer struct {
 	Client        *whatsmeow.Client
 	PushMetricsTo rmq.Queue
-}
-
-func getDataLength(filePath string) int {
-
-	data, err := os.ReadFile(filePath)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	return len(data)
 }
 
 func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
@@ -72,10 +60,9 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 		IsGroupMessage:     task.IsGroup,
 		MessageSender:      task.MessageSender,
 		TimeOfRequest:      task.TimeOfRequest,
-		Validation:         false,
+		Validated:          false,
 	}
 	metricsBytes, _ := json.Marshal(&stickerMetric)
-
 	// perform task
 	log.Printf("performing task %#v", task)
 	data, err := os.ReadFile(task.ConvertedPath)
@@ -84,15 +71,15 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
 		return
 	}
-
+	stickerMetric.FinalMediaLength = len(data)
 	// Upload WebP
 	uploaded, err := consumer.Client.Upload(context.Background(), data, whatsmeow.MediaImage)
 	if err != nil {
 		fmt.Printf("Failed to upload file: %v\n", err)
+		metricsBytes, _ = json.Marshal(&stickerMetric)
 		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
 		return
 	}
-
 	sticker := &waProto.Message{
 		StickerMessage: &waProto.StickerMessage{
 			Url:           proto.String(uploaded.URL),
@@ -104,8 +91,6 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 			FileLength:    proto.Uint64(uint64(len(data))),
 		},
 	}
-
-	convertedDataLength := getDataLength(task.ConvertedPath)
 	if task.MediaType == "video" {
 		sticker.StickerMessage.IsAnimated = proto.Bool(true)
 	}
@@ -121,9 +106,7 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 		consumer.Client.SendMessage(chat, "", completed)
 	}
 	os.Remove(task.ConvertedPath)
-
-	stickerMetric.FinalMediaLength = convertedDataLength
-	stickerMetric.Validation = true
+	stickerMetric.Validated = true
+	metricsBytes, _ = json.Marshal(&stickerMetric)
 	consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
-
 }

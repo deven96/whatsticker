@@ -1,29 +1,26 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/metrics"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func listenForCtrlC() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-}
-
 func main() {
-
+	var (
+		port = flag.String("listen-port", ":9091", "The address to listen on for HTTP requests.")
+	)
 	gauges := metrics.NewGauges()
 	registry := metrics.NewRegistry()
 	metric := metrics.Initialize(registry, gauges)
 
-	log.Printf("Initialized Metrics Consumer %#v", metric)
+	log.Printf("Initialized Metrics SideCar %#v", metric)
 
 	errChan := make(chan error)
 	connectionString := os.Getenv("WAIT_HOSTS")
@@ -36,5 +33,13 @@ func main() {
 	loggingQueue.StartConsuming(10, time.Second)
 	loggingQueue.AddConsumer("logging-consumer", &metric)
 	log.Printf("Starting Queue on %s", connectionString)
-	listenForCtrlC()
+
+	http.Handle("/metrics", promhttp.HandlerFor(
+		registry,
+		promhttp.HandlerOpts{
+			// Opt into OpenMetrics to support exemplars.
+			EnableOpenMetrics: true,
+		},
+	))
+	log.Fatal(http.ListenAndServe(*port, nil))
 }

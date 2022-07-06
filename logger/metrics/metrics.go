@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"strings"
 
 	"encoding/json"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/dongri/phonenumber"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/push"
 
 	rmq "github.com/adjust/rmq/v4"
 )
@@ -21,7 +19,7 @@ type StickerizationMetric struct {
 	IsGroupMessage     bool
 	MessageSender      string
 	TimeOfRequest      string
-	Validation         bool
+	Validated          bool
 }
 
 type StickerizationGauges struct {
@@ -38,11 +36,9 @@ type StickerizationGauges struct {
 type MetricConsumer struct {
 	Gauges   StickerizationGauges
 	Registry *prometheus.Registry
-	Pusher   *push.Pusher
 }
 
 func NewGauges() StickerizationGauges {
-
 	isgroupQueued := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "Source",
@@ -75,17 +71,16 @@ func NewGauges() StickerizationGauges {
 	})
 	isvalidQueued := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "Whatsticker",
-		Subsystem: "Validation",
+		Subsystem: "Validated",
 		Name:      "Valid",
 		Help:      "Valid Stickerization Requests ",
 	})
 	isinvalidQueued := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "Whatsticker",
-		Subsystem: "Validation",
+		Subsystem: "Validated",
 		Name:      "Invalid",
 		Help:      "Invalid Stickerization Requests ",
 	})
-
 	countryQueued := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "Whatsticker",
@@ -120,22 +115,15 @@ func Initialize(registry *prometheus.Registry, gauges StickerizationGauges) Metr
 		gauges.PrivateMessagesGauge,
 		gauges.ImageGauge,
 		gauges.VideoGauge,
+		gauges.InvalidMediaGauge,
+		gauges.ValidGauge,
+		gauges.InvalidGauge,
 	)
-	pusher := push.New("http://metrics:9091", "StickerizationRequestMetrics").Gatherer(registry)
-
 	return MetricConsumer{
 		Registry: registry,
 		Gauges:   gauges,
-		Pusher:   pusher,
 	}
 
-}
-
-func PushToGateway(pusher *push.Pusher) {
-	if err := pusher.Add(); err != nil {
-		fmt.Println("Could not push to Pushgateway:", err)
-	}
-	fmt.Println("Metrics Pushed to Pushgateway:", pusher)
 }
 
 func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges *StickerizationGauges) {
@@ -143,13 +131,11 @@ func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges 
 	if senderCountry != "" {
 		stickerGauges.CountryGauge.With(prometheus.Labels{"country": senderCountry}).Inc()
 	}
-
 	if stickerMetric.IsGroupMessage {
 		stickerGauges.GroupMessagesGauge.Inc()
 	} else {
 		stickerGauges.PrivateMessagesGauge.Inc()
 	}
-
 	if stickerMetric.MediaType == "image" {
 		stickerGauges.ImageGauge.Inc()
 	} else if stickerMetric.MediaType == "video" {
@@ -157,8 +143,7 @@ func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges 
 	} else {
 		stickerGauges.InvalidMediaGauge.Inc()
 	}
-
-	if stickerMetric.Validation {
+	if stickerMetric.Validated {
 		stickerGauges.ValidGauge.Inc()
 	} else {
 		stickerGauges.InvalidGauge.Inc()
@@ -168,9 +153,8 @@ func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges 
 func extractCountry(number string) string {
 	phoneNumber := strings.Trim(number, "+")
 	country := phonenumber.GetISO3166ByNumber(phoneNumber, true)
-	fmt.Println(country.CountryName)
+	log.Printf(country.CountryName)
 	return country.CountryName
-
 }
 
 func (consumer *MetricConsumer) Consume(delivery rmq.Delivery) {
@@ -184,12 +168,9 @@ func (consumer *MetricConsumer) Consume(delivery rmq.Delivery) {
 		return
 	}
 	log.Printf("Incrementing Metrics %#v", stickerMetrics)
-
 	CheckAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
-	PushToGateway(consumer.Pusher)
 	if err := delivery.Ack(); err != nil {
 		// handle ack error
 		return
 	}
-
 }

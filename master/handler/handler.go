@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/task"
@@ -34,28 +35,26 @@ type Handler interface {
 	// also sends message to client about issue
 	Validate() error
 	// Handle : obtains the message to be sent as response
-	Handle(pushTo rmq.Queue, PushMetricsTo rmq.Queue)
+	Handle(pushTo rmq.Queue) error
 }
 
 // Run : the appropriate handler using the event type
-func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, queue rmq.Queue, PushMetricsTo rmq.Queue) {
+func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, convertQueue rmq.Queue, loggingQueue rmq.Queue) {
 	var handle Handler
-	fmt.Printf("Running for %s type\n", event.Info.MediaType)
+	log.Printf("Running for %s type\n", event.Info.MediaType)
 	messageSender := event.Info.Sender.User
 	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
-
-	metricsTask := &task.StickerizationMetric{
+	metric := task.StickerizationMetric{
 		InitialMediaLength: 0,
 		FinalMediaLength:   0,
 		MediaType:          event.Info.MediaType,
 		IsGroupMessage:     isgroupMessage,
 		MessageSender:      messageSender,
 		TimeOfRequest:      requestTime.String(),
-		Validation:         false,
+		Validated:          false,
 	}
-	taskBytes, _ := json.Marshal(metricsTask)
-
+	metricBytes, _ := json.Marshal(&metric)
 	switch event.Info.MediaType {
 	case "image":
 		fmt.Println("Using Image Handler")
@@ -66,17 +65,19 @@ func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, queue rm
 	default:
 		responseMessage := &waProto.Message{Conversation: proto.String("Bot currently supports sticker creation from (video/images) only")}
 		client.SendMessage(event.Info.Chat, "", responseMessage)
-		PushMetricsTo.PublishBytes(taskBytes)
+		loggingQueue.PublishBytes(metricBytes)
 		return
 	}
 	handle.SetUp(client, event, replyTo)
 	invalid := handle.Validate()
 	if invalid != nil {
-		fmt.Printf("%s\n", invalid)
-		PushMetricsTo.PublishBytes(taskBytes)
+		log.Printf("%s\n", invalid)
+		loggingQueue.PublishBytes(metricBytes)
 		return
 	}
-	handle.Handle(queue, PushMetricsTo)
+	if handle.Handle(convertQueue) != nil {
+		loggingQueue.PublishBytes(metricBytes)
+	}
 }
 
 //func RunTest() {
