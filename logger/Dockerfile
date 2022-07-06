@@ -6,6 +6,5 @@ ADD https://github.com/ufoscout/docker-compose-wait/releases/download/$WAIT_VERS
 RUN chmod +x /wait
 COPY go.mod main.go ./
 ADD metrics ./metrics
-ADD push ./push
 RUN go mod tidy
 ENTRYPOINT ["go", "run", "main.go"]
