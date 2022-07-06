@@ -54,37 +54,11 @@ The following flags are available
 - `-reply-to`  : Set to true if bot should quote original messages with reply
 - `-sender`    : Respond to only this jid e.g `234XXXXXXXXXX`
 
+## Architecture
+![Arch Diagram](assets/arch-diag.png)
 
-## Flow
+Open the [architecture](assets/arch-diag.drawio) on [draw.io](https://draw.io) 
 
-```
-|___ worker                              # Container for converting media to stickers (scaled to handle load)
-|    |__ metadata                        # Sets sticker exif info
-|    |   |__ metadata.go
-|    |   |__ raw.exif
-|    |
-|    |__ convert                         # gets media info off the convert queue and converts to webp and passes it to complete queue
-|    |   |__ convert.go
-|    |
-|    |__ Dockerfile
-|    |__ main.go
-|
-|___ master                              # Container that has whatsapp specific information (only one instance possible)
-|    |__ handler                         # Run validation on whatsapp media type events and pass to convert queue
-|    |   |__ handler.go
-|    |   |__ image.go
-|    |   |__ video.go
-|    |
-|    |___ task                           # takes info off the complete queue, uploads webP to whatsapp server and sends as sticker
-|    |    |__ upload.go
-|    |
-|    |___ Dockerfile
-|    |├── main.go                        # Login to WA client. sets up whatsapp event handler and subscribe to queues
-|
-|__  docker-compose                      # Runs redis for queues, volumes for media, spins multiple workers and a worker
-|├── LICENSE
-|└── README.md
-```
 
 ## Limits/Issues
 
@@ -105,4 +79,4 @@ Library/Resource | Use
 [ffmpeg](https://ffmpeg.org) | A complete cross platform solution to record, convert and stream video (and audio).
 [cwebp](https://developers.google.com/speed/webp/docs/cwebp) | Compress an image file into WebP file
 [webpmux](https://developers.google.com/speed/webp/docs/webpmux) | Write exif file to set metadata on stickers
-
+[prometheus](https://github.com/prometheus/client_golang) | Live metrics of stickerization 
