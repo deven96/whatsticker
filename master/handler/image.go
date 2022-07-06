@@ -69,7 +69,7 @@ func (handler *Image) Validate() error {
 	return nil
 }
 
-func (handler *Image) Handle(pushTo rmq.Queue) {
+func (handler *Image) Handle(pushTo rmq.Queue, PushMetricsTo rmq.Queue) {
 	if handler == nil {
 		return
 	}
@@ -77,8 +77,25 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 	event := handler.Event
 	image := event.Message.GetImageMessage()
 	data, err := handler.Client.Download(image)
+
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
+	isgroupMessage := event.Info.IsGroup
+
+	metricsTask := &task.StickerizationMetric{
+		InitialMediaLength: 0,
+		FinalMediaLength:   0,
+		MediaType:          event.Info.MediaType,
+		IsGroupMessage:     isgroupMessage,
+		MessageSender:      messageSender,
+		TimeOfRequest:      requestTime.String(),
+		Validation:         false,
+	}
+	MetricBytes, _ := json.Marshal(metricsTask)
+
 	if err != nil {
 		fmt.Printf("Failed to download image: %v\n", err)
+		PushMetricsTo.PublishBytes(MetricBytes)
 		return
 	}
 
@@ -88,12 +105,10 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
 		fmt.Printf("Failed to save image: %v", err)
+		PushMetricsTo.PublishBytes(MetricBytes)
 		return
 	}
 
-	messageSender := event.Info.Sender.User
-	requestTime := event.Info.Timestamp
-	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	convertTask := &task.ConvertTask{
 		MediaPath:     handler.RawPath,

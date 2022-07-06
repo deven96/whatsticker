@@ -26,6 +26,7 @@ var client *whatsmeow.Client
 var replyTo *bool
 var sender *string
 var convertQueue rmq.Queue
+var loggingQueue rmq.Queue
 
 var commands = map[string]struct{}{
 	"stickerize deven96": {},
@@ -115,7 +116,7 @@ func eventHandler(evt interface{}) {
 			if *sender != "" && messageSender != *sender {
 				return
 			}
-			go handler.Run(client, eventInfo, *replyTo, convertQueue)
+			go handler.Run(client, eventInfo, *replyTo, convertQueue, loggingQueue)
 		}
 	}
 }
@@ -136,20 +137,23 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	clientLog := waLog.Stdout("Client", *loglevel, true)
 	client = whatsmeow.NewClient(deviceStore, clientLog)
 	client.AddEventHandler(eventHandler)
 	client.EnableAutoReconnect = true
 	client.AutoTrustIdentity = true
 
-	complete := &task.StickerConsumer{
-		Client: client,
-	}
 	errChan := make(chan error)
 	connectionString := os.Getenv("WAIT_HOSTS")
 	connection, _ := rmq.OpenConnection("master connection", "tcp", connectionString, 1, errChan)
 	convertQueue, _ = connection.OpenQueue(os.Getenv("CONVERT_TO_WEBP_QUEUE"))
 	completeQueue, _ := connection.OpenQueue(os.Getenv("SEND_TO_WHATSAPP_QUEUE"))
+	loggingQueue, _ = connection.OpenQueue(os.Getenv("LOG_METRIC_QUEUE"))
+	complete := &task.StickerConsumer{
+		Client:        client,
+		PushMetricsTo: loggingQueue,
+	}
 	completeQueue.StartConsuming(10, time.Second)
 	completeQueue.AddConsumer("complete-consumer", complete)
 

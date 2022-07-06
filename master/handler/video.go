@@ -75,7 +75,7 @@ func (handler *Video) Validate() error {
 	return nil
 }
 
-func (handler *Video) Handle(pushTo rmq.Queue) {
+func (handler *Video) Handle(pushTo rmq.Queue, PushMetricsTo rmq.Queue) {
 	if handler == nil {
 		return
 	}
@@ -83,8 +83,25 @@ func (handler *Video) Handle(pushTo rmq.Queue) {
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
 	data, err := handler.Client.Download(video)
+
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
+	isgroupMessage := event.Info.IsGroup
+
+	metricsTask := &task.StickerizationMetric{
+		InitialMediaLength: 0,
+		FinalMediaLength:   0,
+		MediaType:          event.Info.MediaType,
+		IsGroupMessage:     isgroupMessage,
+		MessageSender:      messageSender,
+		TimeOfRequest:      requestTime.String(),
+		Validation:         false,
+	}
+	MetricBytes, _ := json.Marshal(metricsTask)
+
 	if err != nil {
 		fmt.Printf("Failed to download videos: %v\n", err)
+		PushMetricsTo.PublishBytes(MetricBytes)
 		return
 	}
 	exts, _ := mime.ExtensionsByType(video.GetMimetype())
@@ -94,11 +111,9 @@ func (handler *Video) Handle(pushTo rmq.Queue) {
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
 		fmt.Printf("Failed to save video")
+		PushMetricsTo.PublishBytes(MetricBytes)
 		return
 	}
-	messageSender := event.Info.Sender.User
-	requestTime := event.Info.Timestamp
-	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	convertTask := &task.ConvertTask{
 		MediaPath:     handler.RawPath,
