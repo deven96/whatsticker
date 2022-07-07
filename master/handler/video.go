@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"mime"
 	"os"
 	"path/filepath"
@@ -75,29 +76,30 @@ func (handler *Video) Validate() error {
 	return nil
 }
 
-func (handler *Video) Handle(pushTo rmq.Queue) {
+func (handler *Video) Handle(pushTo rmq.Queue) error {
 	if handler == nil {
-		return
+		return errors.New("No Handler")
 	}
 	// Download Video
 	event := handler.Event
 	video := event.Message.GetVideoMessage()
 	data, err := handler.Client.Download(video)
 	if err != nil {
-		fmt.Printf("Failed to download videos: %v\n", err)
-		return
+		log.Printf("Failed to download videos: %v\n", err)
+		return err
 	}
 	exts, _ := mime.ExtensionsByType(video.GetMimetype())
 	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", event.Info.ID, exts[0])
 	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", event.Info.ID, WebPFormat)
-	fmt.Println(len(data))
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
-		fmt.Printf("Failed to save video")
-		return
+		log.Printf("Failed to save video: %v", err)
+		return err
 	}
-	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
+	isgroupMessage := event.Info.IsGroup
 	convertTask := &task.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
@@ -105,7 +107,10 @@ func (handler *Video) Handle(pushTo rmq.Queue) {
 		MediaType:     "video",
 		Chat:          chatBytes,
 		IsGroup:       isgroupMessage,
+		MessageSender: messageSender,
+		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	pushTo.PublishBytes(taskBytes)
+	return nil
 }

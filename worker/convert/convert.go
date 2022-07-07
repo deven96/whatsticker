@@ -27,6 +27,8 @@ type ConvertTask struct {
 	MediaType     string
 	Chat          []byte
 	IsGroup       bool
+	MessageSender string
+	TimeOfRequest string //time.Time
 }
 
 type ConvertConsumer struct {
@@ -54,20 +56,23 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	default:
 		return
 	}
-
 	if err != nil {
 		fmt.Printf("Failed to Convert %s to WebP %s", task.MediaType, err)
 		return
 	}
 
+	//Function to Get file lenght
+
 	metadata.GenerateMetadata(task.ConvertedPath)
 	consumer.PushTo.PublishBytes([]byte(delivery.Payload()))
+
 	os.Remove(task.MediaPath)
 
 	if err := delivery.Ack(); err != nil {
 		// handle ack error
 		return
 	}
+
 }
 
 // FIXME: Probably use this image dimensions to find a way

@@ -7,6 +7,7 @@ x-common-variables: &common-variables
   WAIT_HOST_CONNECT_TIMEOUT: 30
   CONVERT_TO_WEBP_QUEUE: convert
   SEND_WEBP_TO_WHATSAPP_QUEUE: complete
+  LOG_METRIC_QUEUE : metric
 
 services:
   whatsticker-master:
@@ -37,10 +38,19 @@ services:
       replicas: 3
     environment:
       <<: *common-variables
+  whatsticker-logger:
+    build: ./logger
+    restart: always
+    depends_on:
+      - redis
+    command: bash -c "/wait && go run main.go"
+    environment:
+      <<: *common-variables
+    ports: 
+      - "9091:9091"
   redis:
     restart: always
     image: redis
-
 volumes:
   images:
   videos:

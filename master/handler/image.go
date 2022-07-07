@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	// Import all possible image codecs
 	// for getImageDimensions
@@ -69,28 +70,30 @@ func (handler *Image) Validate() error {
 	return nil
 }
 
-func (handler *Image) Handle(pushTo rmq.Queue) {
+func (handler *Image) Handle(pushTo rmq.Queue) error {
 	if handler == nil {
-		return
+		return errors.New("No Handler")
 	}
 	// Download Image
 	event := handler.Event
 	image := event.Message.GetImageMessage()
 	data, err := handler.Client.Download(image)
 	if err != nil {
-		fmt.Printf("Failed to download image: %v\n", err)
-		return
+		log.Printf("Failed to download image: %v\n", err)
+		return err
 	}
 	exts, _ := mime.ExtensionsByType(image.GetMimetype())
 	handler.RawPath = fmt.Sprintf("images/raw/%s%s", event.Info.ID, exts[0])
 	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", event.Info.ID, WebPFormat)
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
-		fmt.Printf("Failed to save image: %v", err)
-		return
+		log.Printf("Failed to save image: %v", err)
+		return err
 	}
-	isgroupMessage := event.Info.IsGroup
 	chatBytes, _ := json.Marshal(event.Info.Chat)
+	messageSender := event.Info.Sender.User
+	requestTime := event.Info.Timestamp
+	isgroupMessage := event.Info.IsGroup
 	convertTask := &task.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
@@ -98,7 +101,10 @@ func (handler *Image) Handle(pushTo rmq.Queue) {
 		MediaType:     "image",
 		Chat:          chatBytes,
 		IsGroup:       isgroupMessage,
+		MessageSender: messageSender,
+		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	pushTo.PublishBytes(taskBytes)
+	return nil
 }
