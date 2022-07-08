@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/task"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -35,11 +35,11 @@ type Handler interface {
 	// also sends message to client about issue
 	Validate() error
 	// Handle : obtains the message to be sent as response
-	Handle(pushTo rmq.Queue) error
+	Handle(ch *amqp.Channel, pushTo amqp.Queue) error
 }
 
 // Run : the appropriate handler using the event type
-func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, convertQueue rmq.Queue, loggingQueue rmq.Queue) {
+func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, ch *amqp.Channel, convertQueue amqp.Queue, loggingQueue amqp.Queue) {
 	var handle Handler
 	log.Printf("Running for %s type\n", event.Info.MediaType)
 	messageSender := event.Info.Sender.User
@@ -65,21 +65,37 @@ func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, convertQ
 	default:
 		responseMessage := &waProto.Message{Conversation: proto.String("Bot currently supports sticker creation from (video/images) only")}
 		client.SendMessage(event.Info.Chat, "", responseMessage)
-		loggingQueue.PublishBytes(metricBytes)
+		publishBytesToQueue(ch, loggingQueue, metricBytes)
 		return
 	}
 	handle.SetUp(client, event, replyTo)
 	invalid := handle.Validate()
 	if invalid != nil {
 		log.Printf("%s\n", invalid)
-		loggingQueue.PublishBytes(metricBytes)
+		publishBytesToQueue(ch, loggingQueue, metricBytes)
 		return
 	}
-	if handle.Handle(convertQueue) != nil {
-		loggingQueue.PublishBytes(metricBytes)
+	if handle.Handle(ch, convertQueue) != nil {
+		publishBytesToQueue(ch, loggingQueue, metricBytes)
 	}
 }
 
 //func RunTest() {
 //  metadata.GenerateMetadata("images/converted/STK-20211123-WA0006.webp", "images/metadata/test.exif")
 //}
+
+func publishBytesToQueue(ch *amqp.Channel, q amqp.Queue, bytes []byte) {
+	err := ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/json",
+			Body:         bytes,
+		})
+	if err != nil {
+		log.Printf("Failed to publish to queue %s", q.Name)
+	}
+}

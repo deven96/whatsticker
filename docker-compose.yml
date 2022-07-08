@@ -1,7 +1,9 @@
 version: "3.9"
 
 x-common-variables: &common-variables
+  AMQP_URI: amqp://guest:guest@rabbitmq:5672/
   WAIT_HOSTS: redis:6379
+#  WAIT_HOSTS: "redis:6379,rabbitmq:5672"
   WAIT_HOSTS_TIMEOUT: 300
   WAIT_SLEEP_INTERVAL: 10
   WAIT_HOST_CONNECT_TIMEOUT: 30
@@ -14,7 +16,7 @@ services:
     build: ./master
     restart: always
     depends_on:
-      - redis
+      - rabbitmq
     command: bash -c "/wait && go run main.go -log-level DEBUG"
     volumes:
       - type: bind
@@ -24,11 +26,13 @@ services:
       - videos:/project/videos
     environment:
       <<: *common-variables
+
   whatsticker-worker:
     build: ./worker
     restart: always
+    platform: linux/x86_64
     depends_on:
-      - redis
+      - rabbitmq
     command: bash -c "/wait && go run main.go"
     volumes:
       - images:/project/images
@@ -38,19 +42,33 @@ services:
       replicas: 3
     environment:
       <<: *common-variables
+        
   whatsticker-logger:
     build: ./logger
     restart: always
     depends_on:
-      - redis
+      - rabbitmq
     command: bash -c "/wait && go run main.go"
     environment:
       <<: *common-variables
     ports: 
       - "9091:9091"
-  redis:
+
+  rabbitmq:
     restart: always
-    image: redis
+    hostname: rabbitmq
+    image: rabbitmq:3-management-alpine
+    ports:
+      - 5672:5672
+      - 8080:15672
+#    volumes:
+#      - /var/lib/rabbitmq/
+#      - /var/log/rabbitmq/
+
+#  redis:
+#    restart: always
+#    image: redis:alpine
+
 volumes:
   images:
   videos:

@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/task"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -76,7 +76,7 @@ func (handler *Video) Validate() error {
 	return nil
 }
 
-func (handler *Video) Handle(pushTo rmq.Queue) error {
+func (handler *Video) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
 	if handler == nil {
 		return errors.New("No Handler")
 	}
@@ -111,6 +111,6 @@ func (handler *Video) Handle(pushTo rmq.Queue) error {
 		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
-	pushTo.PublishBytes(taskBytes)
+	publishBytesToQueue(ch, pushTo, taskBytes)
 	return nil
 }

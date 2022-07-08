@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/exec"
 
-	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/metadata"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 const videoQuality = 35
@@ -32,19 +32,16 @@ type ConvertTask struct {
 }
 
 type ConvertConsumer struct {
-	PushTo rmq.Queue
+	PushTo amqp.Queue
 }
 
-func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
+func (consumer *ConvertConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delivery) {
 	var task ConvertTask
-	if err := json.Unmarshal([]byte(delivery.Payload()), &task); err != nil {
-		// handle json error
-		if err := delivery.Reject(); err != nil {
-			// handle reject error
-			log.Printf("Error delivering Reject %s", err)
-		}
+	if err := json.Unmarshal([]byte(delivery.Body), &task); err != nil {
+		log.Printf("Error unmarshaling delivered body %s", err)
 		return
 	}
+
 	// perform task
 	log.Printf("performing task %#v", task)
 	var err error
@@ -56,6 +53,8 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	default:
 		return
 	}
+	log.Printf("%s", err)
+
 	if err != nil {
 		fmt.Printf("Failed to Convert %s to WebP %s", task.MediaType, err)
 		return
@@ -64,15 +63,12 @@ func (consumer *ConvertConsumer) Consume(delivery rmq.Delivery) {
 	//Function to Get file lenght
 
 	metadata.GenerateMetadata(task.ConvertedPath)
-	consumer.PushTo.PublishBytes([]byte(delivery.Payload()))
+	log.Print("Metadata generation complete")
+	publishBytesToQueue(ch, consumer.PushTo, delivery.Body)
 
+	log.Print("Published to %s queue", consumer.PushTo.Name)
 	os.Remove(task.MediaPath)
-
-	if err := delivery.Ack(); err != nil {
-		// handle ack error
-		return
-	}
-
+	delivery.Ack(false)
 }
 
 // FIXME: Probably use this image dimensions to find a way
@@ -110,9 +106,13 @@ func convertImage(task ConvertTask) error {
 
 	// Convert Image to WebP
 	// Using https://developers.google.com/speed/webp/docs/cwebp
+	log.Print("Converting Image")
 	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "0", "600", "-o", task.ConvertedPath)
 	err := cmd.Run()
 
+	if err == nil {
+		log.Print("Conversion Completed")
+	}
 	return err
 }
 
@@ -151,4 +151,20 @@ func convertVideo(task ConvertTask) error {
 
 	return err
 
+}
+
+func publishBytesToQueue(ch *amqp.Channel, q amqp.Queue, bytes []byte) {
+	err := ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/json",
+			Body:         bytes,
+		})
+	if err != nil {
+		log.Printf("Failed to publish to queue %s", q.Name)
+	}
 }

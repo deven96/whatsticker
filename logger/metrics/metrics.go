@@ -9,7 +9,7 @@ import (
 	"github.com/dongri/phonenumber"
 	"github.com/prometheus/client_golang/prometheus"
 
-	rmq "github.com/adjust/rmq/v4"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type StickerizationMetric struct {
@@ -157,20 +157,12 @@ func extractCountry(number string) string {
 	return country.CountryName
 }
 
-func (consumer *MetricConsumer) Consume(delivery rmq.Delivery) {
+func (consumer *MetricConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delivery) {
 	var stickerMetrics StickerizationMetric
-	if err := json.Unmarshal([]byte(delivery.Payload()), &stickerMetrics); err != nil {
-		// handle json error
-		if err := delivery.Reject(); err != nil {
-			// handle reject error
-			log.Printf("Error delivering Reject %s", err)
-		}
+	if err := json.Unmarshal(delivery.Body, &stickerMetrics); err != nil {
+		log.Printf("Error delivering Reject %s", err)
 		return
 	}
 	log.Printf("Incrementing Metrics %#v", stickerMetrics)
 	CheckAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
-	if err := delivery.Ack(); err != nil {
-		// handle ack error
-		return
-	}
 }

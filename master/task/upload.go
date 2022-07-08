@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	rmq "github.com/adjust/rmq/v4"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types"
@@ -40,17 +40,14 @@ type ConvertTask struct {
 }
 type StickerConsumer struct {
 	Client        *whatsmeow.Client
-	PushMetricsTo rmq.Queue
+	PushMetricsTo amqp.Queue
 }
 
-func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
+func (consumer *StickerConsumer) Execute(ch *amqp.Channel, delivery *amqp.Delivery) {
 	var task ConvertTask
-	if err := json.Unmarshal([]byte(delivery.Payload()), &task); err != nil {
-		// handle json error
-		if err := delivery.Reject(); err != nil {
-			// handle reject error
-			log.Printf("Error delivering Reject %s", err)
-		}
+	if err := json.Unmarshal(delivery.Body, &task); err != nil {
+		// handle reject error
+		log.Printf("Error delivering Reject %s", err)
 		return
 	}
 	stickerMetric := StickerizationMetric{
@@ -68,7 +65,7 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	data, err := os.ReadFile(task.ConvertedPath)
 	if err != nil {
 		fmt.Printf("Failed to read %s: %s\n", task.ConvertedPath, err)
-		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+		publishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
 		return
 	}
 	stickerMetric.FinalMediaLength = len(data)
@@ -77,7 +74,7 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	if err != nil {
 		fmt.Printf("Failed to upload file: %v\n", err)
 		metricsBytes, _ = json.Marshal(&stickerMetric)
-		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+		publishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
 		return
 	}
 	sticker := &waProto.Message{
@@ -108,5 +105,22 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	os.Remove(task.ConvertedPath)
 	stickerMetric.Validated = true
 	metricsBytes, _ = json.Marshal(&stickerMetric)
-	consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+	publishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
+	delivery.Ack(false)
+}
+
+func publishBytesToQueue(ch *amqp.Channel, q amqp.Queue, bytes []byte) {
+	err := ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/json",
+			Body:         bytes,
+		})
+	if err != nil {
+		log.Printf("Failed to publish to queue %s", q.Name)
+	}
 }

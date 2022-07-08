@@ -16,8 +16,9 @@ import (
 	"os"
 	"path/filepath"
 
-	rmq "github.com/adjust/rmq/v4"
 	"github.com/deven96/whatsticker/task"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -70,7 +71,7 @@ func (handler *Image) Validate() error {
 	return nil
 }
 
-func (handler *Image) Handle(pushTo rmq.Queue) error {
+func (handler *Image) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
 	if handler == nil {
 		return errors.New("No Handler")
 	}
@@ -105,6 +106,7 @@ func (handler *Image) Handle(pushTo rmq.Queue) error {
 		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
-	pushTo.PublishBytes(taskBytes)
+	log.Print(taskBytes)
+	publishBytesToQueue(ch, pushTo, taskBytes)
 	return nil
 }
