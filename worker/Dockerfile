@@ -11,8 +11,8 @@ RUN rm -rf libwebp-0.4.3-rc1-linux-x86-64/ libweb.tar.gz
 ENV WAIT_VERSION 2.7.2
 ADD https://github.com/ufoscout/docker-compose-wait/releases/download/$WAIT_VERSION/wait /wait
 RUN chmod +x /wait
-COPY go.mod main.go ./
-ADD convert ./convert
-ADD metadata ./metadata
+COPY go.mod go.sum ./
+COPY worker/ ./worker
+COPY utils/ ./utils
 RUN go mod tidy
-ENTRYPOINT ["go", "run", "main.go"]
+ENTRYPOINT ["go", "run", "worker/main.go"]

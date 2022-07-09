@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	// Import all possible image codecs
 	// for getImageDimensions
@@ -16,9 +15,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deven96/whatsticker/task"
+	"github.com/deven96/whatsticker/utils"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -71,7 +71,7 @@ func (handler *Image) Validate() error {
 	return nil
 }
 
-func (handler *Image) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
+func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	if handler == nil {
 		return errors.New("No Handler")
 	}
@@ -80,7 +80,7 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
 	image := event.Message.GetImageMessage()
 	data, err := handler.Client.Download(image)
 	if err != nil {
-		log.Printf("Failed to download image: %v\n", err)
+		log.Errorf("Failed to download image: %v\n", err)
 		return err
 	}
 	exts, _ := mime.ExtensionsByType(image.GetMimetype())
@@ -88,14 +88,14 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
 	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", event.Info.ID, WebPFormat)
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
-		log.Printf("Failed to save image: %v", err)
+		log.Errorf("Failed to save image: %v", err)
 		return err
 	}
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	messageSender := event.Info.Sender.User
 	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
-	convertTask := &task.ConvertTask{
+	convertTask := &utils.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
 		DataLen:       len(data),
@@ -106,7 +106,6 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo amqp.Queue) error {
 		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
-	log.Print(taskBytes)
-	publishBytesToQueue(ch, pushTo, taskBytes)
+	utils.PublishBytesToQueue(ch, pushTo, taskBytes)
 	return nil
 }

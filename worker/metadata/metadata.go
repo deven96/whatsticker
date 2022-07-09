@@ -3,9 +3,11 @@ package metadata
 import (
 	"fmt"
 	"os/exec"
+
+	log "github.com/sirupsen/logrus"
 )
 
-const rawFile = "metadata/raw.exif"
+const rawFile = "worker/metadata/raw.exif"
 
 // Exif creates the exif metadata file and writes it to the image
 type Exif struct {
@@ -16,11 +18,11 @@ type Exif struct {
 // Write : writes the .exif onto the TargetImage
 func (e Exif) Write() {
 	commandString := fmt.Sprintf("webpmux -set exif %s %s -o %s", rawFile, e.TargetImage, e.TargetImage)
-	fmt.Println(commandString)
+	log.Debug(commandString)
 	cmd := exec.Command("bash", "-c", commandString)
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Failed to set webp metadata", err)
+		log.Error("Failed to set webp metadata", err)
 	}
 }
 
