@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 	"os"
-	"time"
 
-	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/metrics"
+	"github.com/deven96/whatsticker/logger/metrics"
+	"github.com/deven96/whatsticker/utils"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -20,19 +21,37 @@ func main() {
 	registry := metrics.NewRegistry()
 	metric := metrics.Initialize(registry, gauges)
 
-	log.Printf("Initialized Metrics SideCar %#v", metric)
+	log.SetLevel(utils.GetLogLevelFromEnv())
 
-	errChan := make(chan error)
-	connectionString := os.Getenv("WAIT_HOSTS")
-	connection, err := rmq.OpenConnection("logger connection", "tcp", connectionString, 1, errChan)
-	if err != nil {
-		log.Print("Failed to connect to redis queue")
-		return
-	}
-	loggingQueue, _ := connection.OpenQueue(os.Getenv("LOG_METRIC_QUEUE"))
-	loggingQueue.StartConsuming(10, time.Second)
-	loggingQueue.AddConsumer("logging-consumer", &metric)
-	log.Printf("Starting Queue on %s", connectionString)
+	log.Infof("Initialized Metrics SideCar %#v", metric)
+
+	amqpConfig := utils.GetAMQPConfig()
+	conn, err := amqp.Dial(amqpConfig.Uri)
+	utils.FailOnError(err, "Failed to connect to RabbitMQ")
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	utils.FailOnError(err, "Failed to open a channel")
+	defer ch.Close()
+
+	loggingQueue := utils.GetQueue(ch, os.Getenv("LOG_METRIC_QUEUE"), false)
+
+	loggingQueueMsgs, err := ch.Consume(
+		loggingQueue.Name, // queue
+		"",                // consumer
+		true,              // auto-ack true so that we don't resend/consume queue message
+		false,             // exclusive
+		false,             // no-local
+		false,             // no-wait
+		nil,               // args
+	)
+	utils.FailOnError(err, "Failed to register a consumer")
+
+	go func() {
+		for d := range loggingQueueMsgs {
+			metric.Consume(ch, &d)
+		}
+	}()
 
 	http.Handle("/metrics", promhttp.HandlerFor(
 		registry,

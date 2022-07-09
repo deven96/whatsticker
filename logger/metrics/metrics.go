@@ -4,23 +4,14 @@ import (
 	"strings"
 
 	"encoding/json"
-	"log"
 
+	"github.com/deven96/whatsticker/utils"
 	"github.com/dongri/phonenumber"
 	"github.com/prometheus/client_golang/prometheus"
 
-	rmq "github.com/adjust/rmq/v4"
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 )
-
-type StickerizationMetric struct {
-	InitialMediaLength int
-	FinalMediaLength   int
-	MediaType          string
-	IsGroupMessage     bool
-	MessageSender      string
-	TimeOfRequest      string
-	Validated          bool
-}
 
 type StickerizationGauges struct {
 	GroupMessagesGauge   prometheus.Gauge
@@ -126,7 +117,7 @@ func Initialize(registry *prometheus.Registry, gauges StickerizationGauges) Metr
 
 }
 
-func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges *StickerizationGauges) {
+func CheckAndIncrementMetrics(stickerMetric utils.StickerizationMetric, stickerGauges *StickerizationGauges) {
 	senderCountry := extractCountry(stickerMetric.MessageSender)
 	if senderCountry != "" {
 		stickerGauges.CountryGauge.With(prometheus.Labels{"country": senderCountry}).Inc()
@@ -153,24 +144,16 @@ func CheckAndIncrementMetrics(stickerMetric StickerizationMetric, stickerGauges 
 func extractCountry(number string) string {
 	phoneNumber := strings.Trim(number, "+")
 	country := phonenumber.GetISO3166ByNumber(phoneNumber, true)
-	log.Printf(country.CountryName)
+	log.Debugf("Origin Country: %s", country.CountryName)
 	return country.CountryName
 }
 
-func (consumer *MetricConsumer) Consume(delivery rmq.Delivery) {
-	var stickerMetrics StickerizationMetric
-	if err := json.Unmarshal([]byte(delivery.Payload()), &stickerMetrics); err != nil {
-		// handle json error
-		if err := delivery.Reject(); err != nil {
-			// handle reject error
-			log.Printf("Error delivering Reject %s", err)
-		}
+func (consumer *MetricConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delivery) {
+	var stickerMetrics utils.StickerizationMetric
+	if err := json.Unmarshal(delivery.Body, &stickerMetrics); err != nil {
+		log.Errorf("Error delivering Reject %s", err)
 		return
 	}
-	log.Printf("Incrementing Metrics %#v", stickerMetrics)
+	log.Debugf("Incrementing Metrics %#v", stickerMetrics)
 	CheckAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
-	if err := delivery.Ack(); err != nil {
-		// handle ack error
-		return
-	}
 }

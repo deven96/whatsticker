@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"mime"
 	"os"
 	"path/filepath"
 
-	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/task"
+	"github.com/deven96/whatsticker/utils"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -70,13 +71,13 @@ func (handler *Video) Validate() error {
 			},
 		}
 		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		fmt.Printf("File size %d beyond conversion size", video.GetFileLength())
+		log.Warnf("File size %d beyond conversion size", video.GetFileLength())
 		return errors.New("Video size too large")
 	}
 	return nil
 }
 
-func (handler *Video) Handle(pushTo rmq.Queue) error {
+func (handler *Video) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	if handler == nil {
 		return errors.New("No Handler")
 	}
@@ -85,7 +86,7 @@ func (handler *Video) Handle(pushTo rmq.Queue) error {
 	video := event.Message.GetVideoMessage()
 	data, err := handler.Client.Download(video)
 	if err != nil {
-		log.Printf("Failed to download videos: %v\n", err)
+		log.Errorf("Failed to download videos: %v\n", err)
 		return err
 	}
 	exts, _ := mime.ExtensionsByType(video.GetMimetype())
@@ -93,14 +94,14 @@ func (handler *Video) Handle(pushTo rmq.Queue) error {
 	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", event.Info.ID, WebPFormat)
 	err = os.WriteFile(handler.RawPath, data, 0600)
 	if err != nil {
-		log.Printf("Failed to save video: %v", err)
+		log.Errorf("Failed to save video: %v", err)
 		return err
 	}
 	chatBytes, _ := json.Marshal(event.Info.Chat)
 	messageSender := event.Info.Sender.User
 	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
-	convertTask := &task.ConvertTask{
+	convertTask := &utils.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
 		DataLen:       len(data),
@@ -111,6 +112,6 @@ func (handler *Video) Handle(pushTo rmq.Queue) error {
 		TimeOfRequest: requestTime.String(),
 	}
 	taskBytes, _ := json.Marshal(convertTask)
-	pushTo.PublishBytes(taskBytes)
+	utils.PublishBytesToQueue(ch, pushTo, taskBytes)
 	return nil
 }

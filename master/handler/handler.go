@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 
-	rmq "github.com/adjust/rmq/v4"
-	"github.com/deven96/whatsticker/task"
+	"github.com/deven96/whatsticker/utils"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types/events"
@@ -35,17 +35,17 @@ type Handler interface {
 	// also sends message to client about issue
 	Validate() error
 	// Handle : obtains the message to be sent as response
-	Handle(pushTo rmq.Queue) error
+	Handle(ch *amqp.Channel, pushTo *amqp.Queue) error
 }
 
 // Run : the appropriate handler using the event type
-func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, convertQueue rmq.Queue, loggingQueue rmq.Queue) {
+func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, ch *amqp.Channel, convertQueue *amqp.Queue, loggingQueue *amqp.Queue) {
 	var handle Handler
-	log.Printf("Running for %s type\n", event.Info.MediaType)
+	log.Debugf("Running for %s type\n", event.Info.MediaType)
 	messageSender := event.Info.Sender.User
 	requestTime := event.Info.Timestamp
 	isgroupMessage := event.Info.IsGroup
-	metric := task.StickerizationMetric{
+	metric := utils.StickerizationMetric{
 		InitialMediaLength: 0,
 		FinalMediaLength:   0,
 		MediaType:          event.Info.MediaType,
@@ -57,29 +57,27 @@ func Run(client *whatsmeow.Client, event *events.Message, replyTo bool, convertQ
 	metricBytes, _ := json.Marshal(&metric)
 	switch event.Info.MediaType {
 	case "image":
-		fmt.Println("Using Image Handler")
+		log.Debug("Using Image Handler")
 		handle = &Image{}
 	case "video", "gif":
-		fmt.Println("Using Video Handler")
+		log.Debug("Using Video Handler")
 		handle = &Video{}
 	default:
 		responseMessage := &waProto.Message{Conversation: proto.String("Bot currently supports sticker creation from (video/images) only")}
 		client.SendMessage(event.Info.Chat, "", responseMessage)
-		loggingQueue.PublishBytes(metricBytes)
+		utils.PublishBytesToQueue(ch, loggingQueue, metricBytes)
 		return
 	}
+
 	handle.SetUp(client, event, replyTo)
 	invalid := handle.Validate()
 	if invalid != nil {
-		log.Printf("%s\n", invalid)
-		loggingQueue.PublishBytes(metricBytes)
+		log.Debugf("Invalid event Data: %s\n", invalid)
+		utils.PublishBytesToQueue(ch, loggingQueue, metricBytes)
 		return
 	}
-	if handle.Handle(convertQueue) != nil {
-		loggingQueue.PublishBytes(metricBytes)
+
+	if handle.Handle(ch, convertQueue) != nil {
+		utils.PublishBytesToQueue(ch, loggingQueue, metricBytes)
 	}
 }
-
-//func RunTest() {
-//  metadata.GenerateMetadata("images/converted/STK-20211123-WA0006.webp", "images/metadata/test.exif")
-//}

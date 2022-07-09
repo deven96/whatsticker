@@ -3,57 +3,35 @@ package task
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 
-	rmq "github.com/adjust/rmq/v4"
+	"github.com/deven96/whatsticker/utils"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types"
-
 	"google.golang.org/protobuf/proto"
 )
 
 // CompletedMessage is the proto message sent when done
 const CompletedMessage = "Done Stickerizing"
 
-type StickerizationMetric struct {
-	InitialMediaLength int
-	FinalMediaLength   int
-	MediaType          string
-	IsGroupMessage     bool
-	MessageSender      string
-	TimeOfRequest      string
-	Validated          bool
-}
-type ConvertTask struct {
-	MediaPath     string
-	ConvertedPath string
-	DataLen       int
-	MediaType     string
-	Chat          []byte
-	IsGroup       bool
-	MessageSender string
-	TimeOfRequest string
-}
 type StickerConsumer struct {
 	Client        *whatsmeow.Client
-	PushMetricsTo rmq.Queue
+	PushMetricsTo *amqp.Queue
 }
 
-func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
-	var task ConvertTask
-	if err := json.Unmarshal([]byte(delivery.Payload()), &task); err != nil {
-		// handle json error
-		if err := delivery.Reject(); err != nil {
-			// handle reject error
-			log.Printf("Error delivering Reject %s", err)
-		}
+func (consumer *StickerConsumer) Execute(ch *amqp.Channel, delivery *amqp.Delivery) {
+	var task utils.ConvertTask
+	if err := json.Unmarshal(delivery.Body, &task); err != nil {
+		// handle reject error
+		log.Errorf("Error delivering Reject %s", err)
 		return
 	}
-	stickerMetric := StickerizationMetric{
+	stickerMetric := utils.StickerizationMetric{
 		InitialMediaLength: task.DataLen,
 		FinalMediaLength:   0,
 		MediaType:          task.MediaType,
@@ -64,20 +42,20 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	}
 	metricsBytes, _ := json.Marshal(&stickerMetric)
 	// perform task
-	log.Printf("performing task %#v", task)
+	log.Debugf("performing task %#v", task)
 	data, err := os.ReadFile(task.ConvertedPath)
 	if err != nil {
-		fmt.Printf("Failed to read %s: %s\n", task.ConvertedPath, err)
-		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+		log.Errorf("Failed to read %s: %s\n", task.ConvertedPath, err)
+		utils.PublishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
 		return
 	}
 	stickerMetric.FinalMediaLength = len(data)
 	// Upload WebP
 	uploaded, err := consumer.Client.Upload(context.Background(), data, whatsmeow.MediaImage)
 	if err != nil {
-		fmt.Printf("Failed to upload file: %v\n", err)
+		log.Errorf("Failed to upload file: %v\n", err)
 		metricsBytes, _ = json.Marshal(&stickerMetric)
-		consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+		utils.PublishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
 		return
 	}
 	sticker := &waProto.Message{
@@ -108,5 +86,6 @@ func (consumer *StickerConsumer) Consume(delivery rmq.Delivery) {
 	os.Remove(task.ConvertedPath)
 	stickerMetric.Validated = true
 	metricsBytes, _ = json.Marshal(&stickerMetric)
-	consumer.PushMetricsTo.PublishBytes([]byte(metricsBytes))
+	utils.PublishBytesToQueue(ch, consumer.PushMetricsTo, []byte(metricsBytes))
+	delivery.Ack(false)
 }
