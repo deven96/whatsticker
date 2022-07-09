@@ -13,67 +13,67 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type StickerizationGauges struct {
-	GroupMessagesGauge   prometheus.Gauge
-	PrivateMessagesGauge prometheus.Gauge
-	ImageGauge           prometheus.Gauge
-	VideoGauge           prometheus.Gauge
-	InvalidMediaGauge    prometheus.Gauge
-	CountryGauge         *prometheus.GaugeVec
-	ValidGauge           prometheus.Gauge
-	InvalidGauge         prometheus.Gauge
+type StickerizationCounters struct {
+	GroupMessagesCounter   prometheus.Counter
+	PrivateMessagesCounter prometheus.Counter
+	ImageCounter           prometheus.Counter
+	VideoCounter           prometheus.Counter
+	InvalidMediaCounter    prometheus.Counter
+	CountryCounter         *prometheus.CounterVec
+	ValidCounter           prometheus.Counter
+	InvalidCounter         prometheus.Counter
 }
 
 type MetricConsumer struct {
-	Gauges   StickerizationGauges
+	Counters StickerizationCounters
 	Registry *prometheus.Registry
 }
 
-func NewGauges() StickerizationGauges {
-	isgroupQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+func NewCounters() StickerizationCounters {
+	isgroupQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "Source",
 		Name:      "GroupMessages",
 		Help:      "Stickerization Requests From Group Chats",
 	})
-	isprivateQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isprivateQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "Source",
 		Name:      "PrivateMessages",
 		Help:      "Stickerization Requests From Private Chats",
 	})
-	isimageQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isimageQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "MediaType",
 		Name:      "Image",
 		Help:      "Stickerization Requests with Image as Media Type",
 	})
-	isvideoQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isvideoQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "MediaType",
 		Name:      "Video",
 		Help:      "Stickerization Requests with Video as Media Type",
 	})
-	isnomediaQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isnomediaQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "MediaType",
 		Name:      "NoMedia",
 		Help:      "Stickerization Requests with Invalid Media Type ",
 	})
-	isvalidQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isvalidQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "Validated",
 		Name:      "Valid",
 		Help:      "Valid Stickerization Requests ",
 	})
-	isinvalidQueued := prometheus.NewGauge(prometheus.GaugeOpts{
+	isinvalidQueued := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "Whatsticker",
 		Subsystem: "Validated",
 		Name:      "Invalid",
 		Help:      "Invalid Stickerization Requests ",
 	})
-	countryQueued := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+	countryQueued := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
 			Namespace: "Whatsticker",
 			Subsystem: "SenderCountry",
 			Name:      "Country",
@@ -83,15 +83,15 @@ func NewGauges() StickerizationGauges {
 			"country",
 		},
 	)
-	return StickerizationGauges{
-		GroupMessagesGauge:   isgroupQueued,
-		PrivateMessagesGauge: isprivateQueued,
-		ImageGauge:           isimageQueued,
-		VideoGauge:           isvideoQueued,
-		InvalidMediaGauge:    isnomediaQueued,
-		CountryGauge:         countryQueued,
-		ValidGauge:           isvalidQueued,
-		InvalidGauge:         isinvalidQueued,
+	return StickerizationCounters{
+		GroupMessagesCounter:   isgroupQueued,
+		PrivateMessagesCounter: isprivateQueued,
+		ImageCounter:           isimageQueued,
+		VideoCounter:           isvideoQueued,
+		InvalidMediaCounter:    isnomediaQueued,
+		CountryCounter:         countryQueued,
+		ValidCounter:           isvalidQueued,
+		InvalidCounter:         isinvalidQueued,
 	}
 }
 
@@ -99,45 +99,45 @@ func NewRegistry() *prometheus.Registry {
 	return prometheus.NewRegistry()
 }
 
-func Initialize(registry *prometheus.Registry, gauges StickerizationGauges) MetricConsumer {
+func Initialize(registry *prometheus.Registry, counters StickerizationCounters) MetricConsumer {
 	registry.MustRegister(
-		gauges.CountryGauge,
-		gauges.GroupMessagesGauge,
-		gauges.PrivateMessagesGauge,
-		gauges.ImageGauge,
-		gauges.VideoGauge,
-		gauges.InvalidMediaGauge,
-		gauges.ValidGauge,
-		gauges.InvalidGauge,
+		counters.CountryCounter,
+		counters.GroupMessagesCounter,
+		counters.PrivateMessagesCounter,
+		counters.ImageCounter,
+		counters.VideoCounter,
+		counters.InvalidMediaCounter,
+		counters.ValidCounter,
+		counters.InvalidCounter,
 	)
 	return MetricConsumer{
 		Registry: registry,
-		Gauges:   gauges,
+		Counters: counters,
 	}
 
 }
 
-func CheckAndIncrementMetrics(stickerMetric utils.StickerizationMetric, stickerGauges *StickerizationGauges) {
+func CheckAndIncrementMetrics(stickerMetric utils.StickerizationMetric, stickerCounters *StickerizationCounters) {
 	senderCountry := extractCountry(stickerMetric.MessageSender)
 	if senderCountry != "" {
-		stickerGauges.CountryGauge.With(prometheus.Labels{"country": senderCountry}).Inc()
+		stickerCounters.CountryCounter.With(prometheus.Labels{"country": senderCountry}).Inc()
 	}
 	if stickerMetric.IsGroupMessage {
-		stickerGauges.GroupMessagesGauge.Inc()
+		stickerCounters.GroupMessagesCounter.Inc()
 	} else {
-		stickerGauges.PrivateMessagesGauge.Inc()
+		stickerCounters.PrivateMessagesCounter.Inc()
 	}
 	if stickerMetric.MediaType == "image" {
-		stickerGauges.ImageGauge.Inc()
+		stickerCounters.ImageCounter.Inc()
 	} else if stickerMetric.MediaType == "video" {
-		stickerGauges.VideoGauge.Inc()
+		stickerCounters.VideoCounter.Inc()
 	} else {
-		stickerGauges.InvalidMediaGauge.Inc()
+		stickerCounters.InvalidMediaCounter.Inc()
 	}
 	if stickerMetric.Validated {
-		stickerGauges.ValidGauge.Inc()
+		stickerCounters.ValidCounter.Inc()
 	} else {
-		stickerGauges.InvalidGauge.Inc()
+		stickerCounters.InvalidCounter.Inc()
 	}
 }
 
@@ -155,5 +155,5 @@ func (consumer *MetricConsumer) Consume(ch *amqp.Channel, delivery *amqp.Deliver
 		return
 	}
 	log.Debugf("Incrementing Metrics %#v", stickerMetrics)
-	CheckAndIncrementMetrics(stickerMetrics, &consumer.Gauges)
+	CheckAndIncrementMetrics(stickerMetrics, &consumer.Counters)
 }
