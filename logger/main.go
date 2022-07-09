@@ -17,9 +17,9 @@ func main() {
 	var (
 		port = flag.String("listen-port", ":9091", "The address to listen on for HTTP requests.")
 	)
-	gauges := metrics.NewGauges()
+	counters := metrics.NewCounters()
 	registry := metrics.NewRegistry()
-	metric := metrics.Initialize(registry, gauges)
+	metric := metrics.Initialize(registry, counters)
 
 	log.SetLevel(utils.GetLogLevelFromEnv())
 

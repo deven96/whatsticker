@@ -71,6 +71,19 @@ services:
       - /var/lib/rabbitmq/
       - /var/log/rabbitmq/
 
+#  grafana:
+#    image: grafana/grafana
+#    ports:
+#      - 3000:3000
+
+#  prometheus:
+#    hostname: rabbitmq
+#    image: prom/prometheus
+#    volumes:
+#      - ${PWD}/utils/prometheus.yml:/etc/prometheus/prometheus.yml
+#    ports:
+#      - 9090:9090
+
 volumes:
   images:
   videos:
