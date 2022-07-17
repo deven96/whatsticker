@@ -1,5 +1,6 @@
 # Whatsticker
 
+:warning: :warning: The live number is currently banned by WhatsApp so it no longer works, we are investigating ways to avoid ban, one of which may involve a hefty rewrite to use whatsapp official api :warning: :warning:
 
 <p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
 A Whatsapp bot that turns pictures, small videos and gifs into stickers with the caption <b><u><a name="caption">stickerize</u></a></b>
