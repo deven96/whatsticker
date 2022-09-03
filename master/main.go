@@ -4,23 +4,24 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/deven96/whatsticker/master/handler"
-	"github.com/deven96/whatsticker/master/task"
+	"github.com/deven96/whatsticker/master/whatsapp"
 	"github.com/deven96/whatsticker/utils"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mdp/qrterminal/v3"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
+	twilio "github.com/twilio/twilio-go"
+	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
-	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 var client *whatsmeow.Client
@@ -117,11 +118,49 @@ func eventHandler(evt interface{}) {
 	}
 }
 
+type incomingMessageHandler struct {
+	Client *twilio.RestClient
+}
+
+func (i *incomingMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		fmt.Println(r.URL.Query())
+		verifyToken := r.URL.Query().Get("hub.verify_token")
+		mode := r.URL.Query().Get("hub.mode")
+		challenge := r.URL.Query().Get("hub.challenge")
+		if verifyToken == os.Getenv("VERIFY_TOKEN") && mode == "subscribe" {
+			w.Write([]byte(challenge))
+		} else {
+			http.Error(w, "Could not verify challenge", http.StatusBadRequest)
+		}
+		return
+	}
+
+	params := &openapi.CreateMessageParams{}
+	parsed, err := whatsapp.UnmarshalIncomingMessage(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	log.Printf("%#v", parsed.MediaType())
+	log.Print(parsed.ContentLength())
+	params.SetFrom("whatsapp:+14155238886")
+	params.SetTo(*parsed.From)
+	params.SetBody("I see you comrade")
+
+	_, err = i.Client.Api.CreateMessage(params)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println("Message sent successfully!")
+	}
+}
+
 func main() {
 	masterDir, _ := filepath.Abs("./master")
 	logLevel := flag.String("log-level", "INFO", "Set log level to one of (INFO/DEBUG)")
 	replyTo = flag.Bool("reply-to", false, "Set to true to highlight messages to respond to")
 	sender = flag.String("sender", "", "Set to number jid that you want to restrict responses to")
+	port := flag.String("port", "9000", "Set port to start incoming streaming server")
 	flag.Parse()
 
 	if ll := os.Getenv("LOG_LEVEL"); ll != "" {
@@ -130,12 +169,7 @@ func main() {
 	}
 
 	log.SetLevel(utils.GetLogLevel(*logLevel))
-	dbLog := waLog.Stdout("Database", *logLevel, true)
-	// Make sure you add appropriate DB connector imports, e.g. github.com/mattn/go-sqlite3 for SQLite
-	container, err := sqlstore.New("sqlite3", fmt.Sprintf("file:%s/db/examplestore.db?_foreign_keys=on", masterDir), dbLog)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println(masterDir)
 
 	amqpConfig := utils.GetAMQPConfig()
 	conn, err := amqp.Dial(amqpConfig.Uri)
@@ -153,56 +187,27 @@ func main() {
 		0,     // prefetch size
 		false, // global
 	)
-	utils.FailOnError(err, "Failed to set QoS")
-
-	// If you want multiple sessions, remember their JIDs and use .GetDevice(jid) or .GetAllDevices() instead.
-	deviceStore, err := container.GetFirstDevice()
-	if err != nil {
-		panic(err)
-	}
-
-	clientLog := waLog.Stdout("Client", *logLevel, true)
-	client = whatsmeow.NewClient(deviceStore, clientLog)
-	client.AddEventHandler(eventHandler)
-	client.EnableAutoReconnect = true
-	client.AutoTrustIdentity = true
-	defer client.Disconnect()
 
 	convertQueue = utils.GetQueue(ch, os.Getenv("CONVERT_TO_WEBP_QUEUE"), true)
-	completeQueue := utils.GetQueue(ch, os.Getenv("SEND_WEBP_TO_WHATSAPP_QUEUE"), true)
 	loggingQueue = utils.GetQueue(ch, os.Getenv("LOG_METRIC_QUEUE"), false)
-
-	complete := &task.StickerConsumer{
-		Client:        client,
-		PushMetricsTo: loggingQueue,
-	}
-
-	completeQueueMsgs, err := ch.Consume(
-		completeQueue.Name, // queue
-		"",                 // consumer
-		false,              // auto-ack, so we can ack it ourself after processing
-		false,              // exclusive
-		false,              // no-local
-		false,              // no-wait
-		nil,                // args
-	)
-	utils.FailOnError(err, "Failed to register a consumer")
-
-	go func() {
-		for d := range completeQueueMsgs {
-			complete.Execute(ch, &d)
-		}
-	}()
-
-	if client.Store.ID == nil {
-		loginNewClient()
+	http.Handle("/incoming", &incomingMessageHandler{
+		Client: twilio.NewRestClient(),
+	})
+	if err := http.ListenAndServe(":"+*port, nil); err != nil {
+		log.Errorf("Could not start server on %s", *port)
 	} else {
-		// Already logged in, just connect
-		err = client.Connect()
-		if err != nil {
-			panic(err)
-		}
+		log.Infof("Started Server on %s", *port)
 	}
 
-	utils.ListenForCtrlC("master")
+	//  if client.Store.ID == nil {
+	//    loginNewClient()
+	//  } else {
+	//    // Already logged in, just connect
+	//    err = client.Connect()
+	//    if err != nil {
+	//      panic(err)
+	//    }
+	//  }
+
+	//  utils.ListenForCtrlC("master")
 }
