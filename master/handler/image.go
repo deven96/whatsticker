@@ -60,7 +60,7 @@ func (handler *Image) Validate() error {
 			Body: "Your image is larger than 2MB",
 		}
 		textbytes, _ := json.Marshal(&failed)
-		whatsapp.SendMessage(textbytes)
+		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
 		return errors.New("File too large")
 	}
 	handler.ImageURL = url

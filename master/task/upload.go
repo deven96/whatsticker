@@ -63,7 +63,7 @@ func (consumer *StickerConsumer) Execute(ch *amqp.Channel, delivery *amqp.Delive
 		},
 	}
 	stickerBytes, _ := json.Marshal(&sticker)
-	whatsapp.SendMessage(stickerBytes)
+	whatsapp.SendMessage(stickerBytes, task.PhoneNumberID)
 
 	os.Remove(task.ConvertedPath)
 	stickerMetric.Validated = true

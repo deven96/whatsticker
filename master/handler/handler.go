@@ -69,7 +69,7 @@ func Run(event *whatsapp.WhatsappIncomingMessage, ch *amqp.Channel, convertQueue
 					Body: "Bot currently supports sticker creation from (video/images) only",
 				}
 				textbytes, _ := json.Marshal(&failed)
-				whatsapp.SendMessage(textbytes)
+				whatsapp.SendMessage(textbytes, change.Value.Metadata.PhoneNumberID)
 
 				utils.PublishBytesToQueue(ch, loggingQueue, metricBytes)
 				return

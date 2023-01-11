@@ -55,7 +55,7 @@ func (handler *Video) Validate() error {
 			Body: fmt.Sprintf("File size %d beyond conversion size %d", length, contentLen),
 		}
 		textbytes, _ := json.Marshal(&failed)
-		whatsapp.SendMessage(textbytes)
+		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
 
 		log.Warnf("File size %d beyond conversion size", contentLen)
 		return errors.New("Video size too large")
