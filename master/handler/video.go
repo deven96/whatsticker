@@ -8,38 +8,27 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/deven96/whatsticker/master/whatsapp"
 	"github.com/deven96/whatsticker/utils"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
-	"go.mau.fi/whatsmeow/types/events"
-	"google.golang.org/protobuf/proto"
 )
 
 // Video : Logic for when video is received
 type Video struct {
-	Client        *whatsmeow.Client
 	RawPath       string
 	ConvertedPath string
 	MetadataPath  string
-	Format        whatsmeow.MediaType
-	Event         *events.Message
-	ToReply       *waProto.ContextInfo
+	Message       *whatsapp.Message
+	PhoneNumberID string
+	VideoURL      string
+	Len           int
 }
 
-func (handler *Video) SetUp(client *whatsmeow.Client, event *events.Message, replyTo bool) {
-	handler.Client = client
-	handler.Format = whatsmeow.MediaVideo
-	handler.Event = event
-	if replyTo {
-		handler.ToReply = &waProto.ContextInfo{
-			StanzaId:      &event.Info.ID,
-			Participant:   proto.String(event.Info.Sender.String()),
-			QuotedMessage: event.Message,
-		}
-	}
+func (handler *Video) SetUp(message *whatsapp.Message, phoneNumberID string) {
+	handler.Message = message
+	handler.PhoneNumberID = phoneNumberID
 	newpath := filepath.Join(".", "videos/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "videos/converted")
@@ -50,30 +39,29 @@ func (handler *Video) Validate() error {
 	if handler == nil {
 		return errors.New("Please initialize handler")
 	}
-	event := handler.Event
-	video := event.Message.GetVideoMessage()
-	if video.GetSeconds() > VideoFileSecondsLimit {
-		failed := &waProto.Message{
-			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String("Your video is longer than 7 seconds"),
-				ContextInfo: handler.ToReply,
-			},
-		}
-		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		return errors.New("Video too long")
+	message := handler.Message
+	contentLen, url, err := message.ContentLength()
+	if err != nil {
+		return err
 	}
-	if video.GetFileLength() > VideoFileSizeLimit {
-		length := video.GetFileLength() / 1024
-		failed := &waProto.Message{
-			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String(fmt.Sprintf("Your video size %dKb is greater than 1000Kb", length)),
-				ContextInfo: handler.ToReply,
+	if contentLen > VideoFileSizeLimit {
+		length := contentLen / 1024
+		failed := whatsapp.TextResponse{
+			Response: whatsapp.Response{
+				To:      handler.Message.From,
+				Type:    "text",
+				Context: whatsapp.Context{MessageID: message.ID},
 			},
+			Body: fmt.Sprintf("File size %d beyond conversion size %d", length, contentLen),
 		}
-		handler.Client.SendMessage(event.Info.Chat, "", failed)
-		log.Warnf("File size %d beyond conversion size", video.GetFileLength())
+		textbytes, _ := json.Marshal(&failed)
+		whatsapp.SendMessage(textbytes)
+
+		log.Warnf("File size %d beyond conversion size", contentLen)
 		return errors.New("Video size too large")
 	}
+	handler.VideoURL = url
+	handler.Len = contentLen
 	return nil
 }
 
@@ -82,34 +70,29 @@ func (handler *Video) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 		return errors.New("No Handler")
 	}
 	// Download Video
-	event := handler.Event
-	video := event.Message.GetVideoMessage()
-	data, err := handler.Client.Download(video)
+	message := handler.Message
+	exts, _ := mime.ExtensionsByType(message.MediaType())
+	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", message.ID, exts[0])
+	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", message.ID, WebPFormat)
+	err := message.DownloadMedia(handler.RawPath, handler.VideoURL)
 	if err != nil {
 		log.Errorf("Failed to download videos: %v\n", err)
 		return err
 	}
-	exts, _ := mime.ExtensionsByType(video.GetMimetype())
-	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", event.Info.ID, exts[0])
-	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", event.Info.ID, WebPFormat)
-	err = os.WriteFile(handler.RawPath, data, 0600)
-	if err != nil {
-		log.Errorf("Failed to save video: %v", err)
-		return err
-	}
-	chatBytes, _ := json.Marshal(event.Info.Chat)
-	messageSender := event.Info.Sender.User
-	requestTime := event.Info.Timestamp
-	isgroupMessage := event.Info.IsGroup
+	messageSender := message.From
+	requestTime := message.Time()
+	isgroupMessage := message.IsGroup()
 	convertTask := &utils.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
-		DataLen:       len(data),
+		DataLen:       handler.Len,
 		MediaType:     "video",
-		Chat:          chatBytes,
+		MessageID:     message.ID,
+		From:          message.From,
+		PhoneNumberID: handler.PhoneNumberID,
 		IsGroup:       isgroupMessage,
 		MessageSender: messageSender,
-		TimeOfRequest: requestTime.String(),
+		TimeOfRequest: requestTime,
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	utils.PublishBytesToQueue(ch, pushTo, taskBytes)

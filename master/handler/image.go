@@ -15,37 +15,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/deven96/whatsticker/master/whatsapp"
 	"github.com/deven96/whatsticker/utils"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
-	"go.mau.fi/whatsmeow/types/events"
-	"google.golang.org/protobuf/proto"
 )
 
 // Image : Logic for when image is received
 type Image struct {
-	Client        *whatsmeow.Client
 	RawPath       string
 	ConvertedPath string
-	Format        whatsmeow.MediaType
-	Event         *events.Message
-	ToReply       *waProto.ContextInfo
+	Message       *whatsapp.Message
+	PhoneNumberID string
+	ImageURL      string
+	Len           int
 }
 
-func (handler *Image) SetUp(client *whatsmeow.Client, event *events.Message, replyTo bool) {
-	handler.Client = client
-	handler.Format = whatsmeow.MediaImage
-	handler.Event = event
-	if replyTo {
-		handler.ToReply = &waProto.ContextInfo{
-			StanzaId:      &event.Info.ID,
-			Participant:   proto.String(event.Info.Sender.String()),
-			QuotedMessage: event.Message,
-		}
-	}
+func (handler *Image) SetUp(message *whatsapp.Message, phoneNumberID string) {
+	handler.Message = message
+	handler.PhoneNumberID = phoneNumberID
 	newpath := filepath.Join(".", "images/raw")
 	os.MkdirAll(newpath, os.ModePerm)
 	newpath = filepath.Join(".", "images/converted")
@@ -56,18 +45,26 @@ func (handler *Image) Validate() error {
 	if handler == nil {
 		return errors.New("Please initialize handler")
 	}
-	event := handler.Event
-	image := event.Message.GetImageMessage()
-	if image.GetFileLength() > ImageFileSizeLimit {
-		failed := &waProto.Message{
-			ExtendedTextMessage: &waProto.ExtendedTextMessage{
-				Text:        proto.String("Your file is larger than 2MB"),
-				ContextInfo: handler.ToReply,
+	message := handler.Message
+	contentLen, url, err := message.ContentLength()
+	if err != nil {
+		return err
+	}
+	if contentLen > ImageFileSizeLimit {
+		failed := whatsapp.TextResponse{
+			Response: whatsapp.Response{
+				To:      handler.Message.From,
+				Type:    "text",
+				Context: whatsapp.Context{MessageID: message.ID},
 			},
+			Body: "Your image is larger than 2MB",
 		}
-		handler.Client.SendMessage(event.Info.Chat, "", failed)
+		textbytes, _ := json.Marshal(&failed)
+		whatsapp.SendMessage(textbytes)
 		return errors.New("File too large")
 	}
+	handler.ImageURL = url
+	handler.Len = contentLen
 	return nil
 }
 
@@ -76,34 +73,29 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 		return errors.New("No Handler")
 	}
 	// Download Image
-	event := handler.Event
-	image := event.Message.GetImageMessage()
-	data, err := handler.Client.Download(image)
+	message := handler.Message
+	exts, _ := mime.ExtensionsByType(message.MediaType())
+	handler.RawPath = fmt.Sprintf("images/raw/%s%s", message.ID, exts[0])
+	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", message.ID, WebPFormat)
+	err := message.DownloadMedia(handler.RawPath, handler.ImageURL)
 	if err != nil {
-		log.Errorf("Failed to download image: %v\n", err)
+		log.Errorf("Failed to download images: %v\n", err)
 		return err
 	}
-	exts, _ := mime.ExtensionsByType(image.GetMimetype())
-	handler.RawPath = fmt.Sprintf("images/raw/%s%s", event.Info.ID, exts[0])
-	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", event.Info.ID, WebPFormat)
-	err = os.WriteFile(handler.RawPath, data, 0600)
-	if err != nil {
-		log.Errorf("Failed to save image: %v", err)
-		return err
-	}
-	chatBytes, _ := json.Marshal(event.Info.Chat)
-	messageSender := event.Info.Sender.User
-	requestTime := event.Info.Timestamp
-	isgroupMessage := event.Info.IsGroup
+	messageSender := message.From
+	requestTime := message.Time()
+	isgroupMessage := message.IsGroup()
 	convertTask := &utils.ConvertTask{
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
-		DataLen:       len(data),
+		DataLen:       handler.Len,
 		MediaType:     "image",
-		Chat:          chatBytes,
+		MessageID:     message.ID,
+		From:          message.From,
+		PhoneNumberID: handler.PhoneNumberID,
 		IsGroup:       isgroupMessage,
 		MessageSender: messageSender,
-		TimeOfRequest: requestTime.String(),
+		TimeOfRequest: requestTime,
 	}
 	taskBytes, _ := json.Marshal(convertTask)
 	utils.PublishBytesToQueue(ch, pushTo, taskBytes)

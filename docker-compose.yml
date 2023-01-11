@@ -10,6 +10,8 @@ x-common-variables: &common-variables
   SEND_WEBP_TO_WHATSAPP_QUEUE: complete
   LOG_METRIC_QUEUE : metric
   LOG_LEVEL : info
+  VERIFY_TOKEN: ${VERIFY_TOKEN}
+  BEARER_ACCESS_TOKEN: ${BEARER_ACCESS_TOKEN}
 
 services:
   whatsticker-master:
@@ -21,13 +23,12 @@ services:
       - rabbitmq
     command: bash -c "/wait && go run master/main.go -log-level DEBUG"
     volumes:
-      - type: bind
-        source: ./master/db
-        target: /project/master/db
       - images:/project/master/images
       - videos:/project/master/videos
     environment:
       <<: *common-variables
+    ports: 
+      - "9000:9000"
 
   whatsticker-worker:
     build:

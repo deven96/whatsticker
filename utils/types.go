@@ -20,7 +20,9 @@ type ConvertTask struct {
 	ConvertedPath string
 	DataLen       int
 	MediaType     string
-	Chat          []byte
+	From          string
+	PhoneNumberID string
+	MessageID     string
 	IsGroup       bool
 	MessageSender string
 	TimeOfRequest string //time.Time
