@@ -52,7 +52,9 @@ func (handler *Video) Validate() error {
 				Type:    "text",
 				Context: whatsapp.Context{MessageID: message.ID},
 			},
-			Body: fmt.Sprintf("File size %d beyond conversion size %d", length, meta.FileSize),
+			Text: whatsapp.Text{
+				Body: fmt.Sprintf("File size %d beyond conversion size %d", length, meta.FileSize),
+			},
 		}
 		textbytes, _ := json.Marshal(&failed)
 		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)

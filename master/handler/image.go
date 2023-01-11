@@ -57,7 +57,9 @@ func (handler *Image) Validate() error {
 				Type:    "text",
 				Context: whatsapp.Context{MessageID: message.ID},
 			},
-			Body: "Your image is larger than 2MB",
+			Text: whatsapp.Text{
+				Body: "Your image is larger than 2MB",
+			},
 		}
 		textbytes, _ := json.Marshal(&failed)
 		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
@@ -75,7 +77,6 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	// Download Image
 	message := handler.Message
 	exts, _ := mime.ExtensionsByType(message.MediaType())
-	fmt.Println(message.MediaType(), exts)
 	handler.RawPath = fmt.Sprintf("images/raw/%s%s", message.MediaID(), exts[len(exts)-1])
 	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", message.MediaID(), WebPFormat)
 	err := message.DownloadMedia(handler.RawPath, handler.ImageURL)

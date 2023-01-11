@@ -17,8 +17,8 @@ import (
 
 const videoQuality = 35
 
-// 975kb
-const maxFileSize = 975000
+// 500kb
+const maxFileSize = 500000
 
 const animatableVideoLen = 1000000
 
@@ -105,7 +105,7 @@ func convertVideo(task utils.ConvertTask) error {
 		qValue = 12
 	}
 	log.Debugf("Q value is %d\n", qValue)
-	commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800  %s", task.MediaPath, qValue, task.ConvertedPath)
+	commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 512:512  %s", task.MediaPath, qValue, task.ConvertedPath)
 	cmd := *exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
@@ -116,7 +116,7 @@ func convertVideo(task utils.ConvertTask) error {
 	// validate converted video is the right size
 	if !(isAnimateable(task.ConvertedPath)) {
 		log.Debugf("Reconverting video..\n")
-		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=800:800' -quality %d -y %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
+		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=512:512' -quality %d -y %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
 		cmd := *exec.Command("bash", "-c", commandString)
 		var outb, errb bytes.Buffer
 		cmd.Stdout = &outb

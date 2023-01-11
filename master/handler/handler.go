@@ -67,7 +67,9 @@ func Run(event *whatsapp.WhatsappIncomingMessage, ch *amqp.Channel, convertQueue
 						Type:    "text",
 						Context: whatsapp.Context{MessageID: message.ID},
 					},
-					Body: "Bot currently supports sticker creation from (video/images) only",
+					Text: whatsapp.Text{
+						Body: "Bot currently supports sticker creation from (video/images) only",
+					},
 				}
 				textbytes, _ := json.Marshal(&failed)
 				whatsapp.SendMessage(textbytes, change.Value.Metadata.PhoneNumberID)

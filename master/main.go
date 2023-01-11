@@ -28,7 +28,6 @@ type incomingMessageHandler struct {
 
 func (i *incomingMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		fmt.Println(r.URL.Query())
 		verifyToken := r.URL.Query().Get("hub.verify_token")
 		mode := r.URL.Query().Get("hub.mode")
 		challenge := r.URL.Query().Get("hub.challenge")

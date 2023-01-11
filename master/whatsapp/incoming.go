@@ -189,6 +189,5 @@ func (incoming Message) DownloadMedia(path string, url string) error {
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(out, resp.Body)
-	fmt.Println(os.Stat(path))
 	return err
 }
