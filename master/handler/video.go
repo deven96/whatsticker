@@ -40,28 +40,28 @@ func (handler *Video) Validate() error {
 		return errors.New("Please initialize handler")
 	}
 	message := handler.Message
-	contentLen, url, err := message.ContentLength()
+	meta, err := message.ContentLength()
 	if err != nil {
 		return err
 	}
-	if contentLen > VideoFileSizeLimit {
-		length := contentLen / 1024
+	if meta.FileSize > VideoFileSizeLimit {
+		length := meta.FileSize / 1024
 		failed := whatsapp.TextResponse{
 			Response: whatsapp.Response{
 				To:      handler.Message.From,
 				Type:    "text",
 				Context: whatsapp.Context{MessageID: message.ID},
 			},
-			Body: fmt.Sprintf("File size %d beyond conversion size %d", length, contentLen),
+			Body: fmt.Sprintf("File size %d beyond conversion size %d", length, meta.FileSize),
 		}
 		textbytes, _ := json.Marshal(&failed)
 		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
 
-		log.Warnf("File size %d beyond conversion size", contentLen)
+		log.Warnf("File size %d beyond conversion size", meta.FileSize)
 		return errors.New("Video size too large")
 	}
-	handler.VideoURL = url
-	handler.Len = contentLen
+	handler.VideoURL = meta.URL
+	handler.Len = meta.FileSize
 	return nil
 }
 
@@ -72,8 +72,8 @@ func (handler *Video) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	// Download Video
 	message := handler.Message
 	exts, _ := mime.ExtensionsByType(message.MediaType())
-	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", message.ID, exts[0])
-	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", message.ID, WebPFormat)
+	handler.RawPath = fmt.Sprintf("videos/raw/%s%s", message.MediaID(), exts[0])
+	handler.ConvertedPath = fmt.Sprintf("videos/converted/%s%s", message.MediaID(), WebPFormat)
 	err := message.DownloadMedia(handler.RawPath, handler.VideoURL)
 	if err != nil {
 		log.Errorf("Failed to download videos: %v\n", err)

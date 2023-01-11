@@ -43,8 +43,7 @@ func (i *incomingMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
-	go handler.Run(parsed, ch, convertQueue, loggingQueue)
-	fmt.Printf("%#v", parsed.Entry)
+	handler.Run(parsed, ch, convertQueue, loggingQueue)
 }
 
 func main() {

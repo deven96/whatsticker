@@ -46,11 +46,11 @@ func (handler *Image) Validate() error {
 		return errors.New("Please initialize handler")
 	}
 	message := handler.Message
-	contentLen, url, err := message.ContentLength()
+	meta, err := message.ContentLength()
 	if err != nil {
 		return err
 	}
-	if contentLen > ImageFileSizeLimit {
+	if meta.FileSize > ImageFileSizeLimit {
 		failed := whatsapp.TextResponse{
 			Response: whatsapp.Response{
 				To:      handler.Message.From,
@@ -63,8 +63,8 @@ func (handler *Image) Validate() error {
 		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
 		return errors.New("File too large")
 	}
-	handler.ImageURL = url
-	handler.Len = contentLen
+	handler.ImageURL = meta.URL
+	handler.Len = meta.FileSize
 	return nil
 }
 
@@ -75,8 +75,9 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	// Download Image
 	message := handler.Message
 	exts, _ := mime.ExtensionsByType(message.MediaType())
-	handler.RawPath = fmt.Sprintf("images/raw/%s%s", message.ID, exts[0])
-	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", message.ID, WebPFormat)
+	fmt.Println(message.MediaType(), exts)
+	handler.RawPath = fmt.Sprintf("images/raw/%s%s", message.MediaID(), exts[len(exts)-1])
+	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", message.MediaID(), WebPFormat)
 	err := message.DownloadMedia(handler.RawPath, handler.ImageURL)
 	if err != nil {
 		log.Errorf("Failed to download images: %v\n", err)

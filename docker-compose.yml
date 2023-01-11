@@ -23,8 +23,8 @@ services:
       - rabbitmq
     command: bash -c "/wait && go run master/main.go -log-level DEBUG"
     volumes:
-      - images:/project/master/images
-      - videos:/project/master/videos
+      - images:/project/images
+      - videos:/project/videos
     environment:
       <<: *common-variables
     ports: 
@@ -40,8 +40,8 @@ services:
       - rabbitmq
     command: bash -c "/wait && go run worker/main.go"
     volumes:
-      - images:/project/master/images
-      - videos:/project/master/videos
+      - images:/project/images
+      - videos:/project/videos
     deploy:
       mode: replicated
       replicas: 3

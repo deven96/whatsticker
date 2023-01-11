@@ -31,8 +31,10 @@ type TextResponse struct {
 }
 
 func SendMessage(message []byte, phoneNumberID string) error {
+	fmt.Println("I got here")
 	// Create a new request using http
-	url := fmt.Sprintf("%s/%s/messages", FacebookGraphAPI, phoneNumberID)
+	url := fmt.Sprintf("%s%s/messages", FacebookGraphAPI, phoneNumberID)
+	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
 	if err != nil {
 		return err

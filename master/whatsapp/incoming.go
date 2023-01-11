@@ -73,7 +73,7 @@ type Media struct {
 
 type MediaURLResponse struct {
 	URL      string `json:"url"`
-	FileSize string `json:"file_size"`
+	FileSize int    `json:"file_size"`
 }
 
 type Contact struct {
@@ -136,16 +136,16 @@ func (incoming Message) IsGroup() bool {
 	return false
 }
 
-func (incoming Message) ContentLength() (int, string, error) {
+func (incoming Message) ContentLength() (*MediaURLResponse, error) {
 	if !incoming.IsMedia() {
-		return 0, "", errors.New("Cannot get ContentLength for non media message")
+		return nil, errors.New("Cannot get ContentLength for non media message")
 	}
 	id := incoming.MediaID()
 	// Create a new request using http
-	url := fmt.Sprintf("%s/%s", FacebookGraphAPI, id)
+	url := fmt.Sprintf("%s%s", FacebookGraphAPI, id)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
 	// add authorization header to the req
 	req.Header.Add("Authorization", BearerToken)
@@ -154,19 +154,15 @@ func (incoming Message) ContentLength() (int, string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	var r MediaURLResponse
 	err = json.NewDecoder(resp.Body).Decode(&r)
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
-	size, err := strconv.Atoi(r.FileSize)
-	if err != nil {
-		return 0, "", err
-	}
-	return size, r.URL, nil
+	return &r, nil
 }
 
 func (incoming Message) DownloadMedia(path string, url string) error {
@@ -193,5 +189,6 @@ func (incoming Message) DownloadMedia(path string, url string) error {
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(out, resp.Body)
+	fmt.Println(os.Stat(path))
 	return err
 }

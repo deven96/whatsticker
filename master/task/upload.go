@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/deven96/whatsticker/master/whatsapp"
@@ -22,7 +23,7 @@ func (consumer *StickerConsumer) Execute(ch *amqp.Channel, delivery *amqp.Delive
 	var task utils.ConvertTask
 	if err := json.Unmarshal(delivery.Body, &task); err != nil {
 		// handle reject error
-		log.Errorf("Error delivering Reject %s", err)
+		log.Errorf("Error delivering completed task %s", err)
 		return
 	}
 	stickerMetric := utils.StickerizationMetric{
@@ -46,6 +47,7 @@ func (consumer *StickerConsumer) Execute(ch *amqp.Channel, delivery *amqp.Delive
 	stickerMetric.FinalMediaLength = len(data)
 	// Upload WebP
 	id, err := whatsapp.UploadSticker(task.ConvertedPath, task.PhoneNumberID)
+	fmt.Println(id, err)
 	if err != nil {
 		log.Errorf("Failed to upload file: %v\n", err)
 		metricsBytes, _ = json.Marshal(&stickerMetric)

@@ -52,6 +52,7 @@ func Run(event *whatsapp.WhatsappIncomingMessage, ch *amqp.Channel, convertQueue
 				Validated:          false,
 			}
 			metricBytes, _ := json.Marshal(&metric)
+			log.Println(message.Type)
 			switch message.Type {
 			case "image":
 				log.Debug("Using Image Handler")
@@ -70,7 +71,6 @@ func Run(event *whatsapp.WhatsappIncomingMessage, ch *amqp.Channel, convertQueue
 				}
 				textbytes, _ := json.Marshal(&failed)
 				whatsapp.SendMessage(textbytes, change.Value.Metadata.PhoneNumberID)
-
 				utils.PublishBytesToQueue(ch, loggingQueue, metricBytes)
 				return
 			}

@@ -44,14 +44,10 @@ func (consumer *ConvertConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delive
 	default:
 		return
 	}
-
 	if err != nil {
 		log.Errorf("Failed to Convert %s to WebP %s", task.MediaType, err)
 		return
 	}
-
-	//Function to Get file lenght
-
 	metadata.GenerateMetadata(task.ConvertedPath)
 	utils.PublishBytesToQueue(ch, consumer.PushTo, delivery.Body)
 
@@ -76,7 +72,6 @@ func getImageDimensions(path string) (int, int) {
 }
 
 func isAnimateable(path string) bool {
-
 	file, err := os.ReadFile(path)
 	if err != nil {
 		log.Errorf("can not check if video length is animatable: %v", err)
@@ -88,20 +83,18 @@ func isAnimateable(path string) bool {
 }
 
 func convertImage(task utils.ConvertTask) error {
-
 	// FIXME: converting to webp's 512x512 skews aspect ratio
 	// So Find a way to convert to 512x512 while maintaining perspective before cwebp convertion
 
 	// Convert Image to WebP
 	// Using https://developers.google.com/speed/webp/docs/cwebp
-	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "0", "600", "-o", task.ConvertedPath)
+	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "512", "512", "-o", task.ConvertedPath)
 	err := cmd.Run()
 
 	return err
 }
 
 func convertVideo(task utils.ConvertTask) error {
-
 	var qValue int
 	switch {
 	case task.DataLen < 350000:
