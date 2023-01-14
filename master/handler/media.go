@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const whatsappErrorResponse = "Your %s size %d beyond conversion size %d"
+const whatsappErrorResponse = "Your %s size %dkb beyond conversion size %dkb"
 
 type Media struct {
 	RawPath       string
@@ -65,7 +65,7 @@ func (handler *Media) Validate() error {
 				Context: whatsapp.Context{MessageID: message.ID},
 			},
 			Text: whatsapp.Text{
-				Body: fmt.Sprintf(whatsappErrorResponse, handler.MediaType, length, meta.FileSize),
+				Body: fmt.Sprintf(whatsappErrorResponse, handler.MediaType, length, handler.sizeLimit()/1024),
 			},
 		}
 		textbytes, _ := json.Marshal(&failed)
