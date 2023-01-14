@@ -4,53 +4,60 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	// Import all possible image codecs
-	// for getImageDimensions
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-
 	"mime"
 	"os"
 	"path/filepath"
 
 	"github.com/deven96/whatsticker/master/whatsapp"
 	"github.com/deven96/whatsticker/utils"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 )
 
-// Image : Logic for when image is received
-type Image struct {
+const whatsappErrorResponse = "Your %s size %d beyond conversion size %d"
+
+type Media struct {
 	RawPath       string
 	ConvertedPath string
+	MetadataPath  string
 	Message       *whatsapp.Message
 	PhoneNumberID string
-	ImageURL      string
+	MediaURL      string
 	Len           int
+	MediaType     string
 }
 
-func (handler *Image) SetUp(message *whatsapp.Message, phoneNumberID string) {
+func (handler *Media) SetUp(message *whatsapp.Message, phoneNumberID string) {
 	handler.Message = message
 	handler.PhoneNumberID = phoneNumberID
-	newpath := filepath.Join(".", "images/raw")
+	handler.MediaType = message.Type
+
+	newpath := filepath.Join(".", fmt.Sprintf("%ss/raw", handler.MediaType))
 	os.MkdirAll(newpath, os.ModePerm)
-	newpath = filepath.Join(".", "images/converted")
+	newpath = filepath.Join(".", fmt.Sprintf("%ss/converted", handler.MediaType))
 	os.MkdirAll(newpath, os.ModePerm)
 }
 
-func (handler *Image) Validate() error {
+func (handler *Media) sizeLimit() int {
+	// we dealing with just images and videos so we good
+	if handler.MediaType == "image" {
+		return ImageFileSizeLimit
+	} else {
+		return VideoFileSizeLimit
+	}
+}
+
+func (handler *Media) Validate() error {
 	if handler == nil {
-		return errors.New("Please initialize handler")
+		return errors.New("please initialize handler")
 	}
 	message := handler.Message
 	meta, err := message.ContentLength()
 	if err != nil {
 		return err
 	}
-	if meta.FileSize > ImageFileSizeLimit {
+	if meta.FileSize > handler.sizeLimit() {
+		length := meta.FileSize / 1024
 		failed := whatsapp.TextResponse{
 			Response: whatsapp.Response{
 				To:      handler.Message.From,
@@ -58,30 +65,30 @@ func (handler *Image) Validate() error {
 				Context: whatsapp.Context{MessageID: message.ID},
 			},
 			Text: whatsapp.Text{
-				Body: "Your image is larger than 2MB",
+				Body: fmt.Sprintf(whatsappErrorResponse, handler.MediaType, length, meta.FileSize),
 			},
 		}
 		textbytes, _ := json.Marshal(&failed)
 		whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
-		return errors.New("File too large")
+		return fmt.Errorf("%s too large", handler.MediaType)
 	}
-	handler.ImageURL = meta.URL
+	handler.MediaURL = meta.URL
 	handler.Len = meta.FileSize
 	return nil
 }
 
-func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
+func (handler *Media) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 	if handler == nil {
-		return errors.New("No Handler")
+		return errors.New("no Handler")
 	}
-	// Download Image
+	// Download Media
 	message := handler.Message
 	exts, _ := mime.ExtensionsByType(message.MediaType())
-	handler.RawPath = fmt.Sprintf("images/raw/%s%s", message.MediaID(), exts[len(exts)-1])
-	handler.ConvertedPath = fmt.Sprintf("images/converted/%s%s", message.MediaID(), WebPFormat)
-	err := message.DownloadMedia(handler.RawPath, handler.ImageURL)
+	handler.RawPath = fmt.Sprintf("%ss/raw/%s%s", handler.MediaType, message.MediaID(), exts[0])
+	handler.ConvertedPath = fmt.Sprintf("%ss/converted/%s%s", handler.MediaType, message.MediaID(), WebPFormat)
+	err := message.DownloadMedia(handler.RawPath, handler.MediaURL)
 	if err != nil {
-		log.Errorf("Failed to download images: %v\n", err)
+		log.Errorf("Failed to download %ss: %v\n", handler.MediaType, err)
 		return err
 	}
 	messageSender := message.From
@@ -91,7 +98,7 @@ func (handler *Image) Handle(ch *amqp.Channel, pushTo *amqp.Queue) error {
 		MediaPath:     handler.RawPath,
 		ConvertedPath: handler.ConvertedPath,
 		DataLen:       handler.Len,
-		MediaType:     "image",
+		MediaType:     handler.MediaType,
 		MessageID:     message.ID,
 		From:          message.From,
 		PhoneNumberID: handler.PhoneNumberID,
