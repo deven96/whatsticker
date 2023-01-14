@@ -54,12 +54,9 @@ func Run(event *whatsapp.WhatsappIncomingMessage, ch *amqp.Channel, convertQueue
 			metricBytes, _ := json.Marshal(&metric)
 			log.Println(message.Type)
 			switch message.Type {
-			case "image":
-				log.Debug("Using Image Handler")
-				handle = &Image{}
-			case "video", "gif":
-				log.Debug("Using Video Handler")
-				handle = &Video{}
+			case "image", "video":
+				log.Debug("Using Media Handler")
+				handle = &Media{}
 			default:
 				failed := whatsapp.TextResponse{
 					Response: whatsapp.Response{
