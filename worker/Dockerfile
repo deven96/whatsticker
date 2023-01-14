@@ -1,6 +1,6 @@
 FROM golang:1.17
 WORKDIR /project
-RUN apt-get update -q && apt-get -y install curl ffmpeg
+RUN apt-get update -q && apt-get -y install curl ffmpeg imagemagick
 RUN curl -o libweb.tar.gz -L https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-0.4.3-rc1-linux-x86-64.tar.gz
 RUN tar -xf libweb.tar.gz libwebp-0.4.3-rc1-linux-x86-64/bin/cwebp
 RUN tar -xf libweb.tar.gz libwebp-0.4.3-rc1-linux-x86-64/bin/webpmux

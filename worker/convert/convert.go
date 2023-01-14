@@ -82,14 +82,26 @@ func isAnimateable(path string) bool {
 	return true
 }
 
+// magick input.jpg -resize 800x600 -background black -compose Copy \
+// -gravity center -extent 800x600 -quality 92 output.jpg
+func resizeImage(task utils.ConvertTask) error {
+	cmd := *exec.Command("convert", task.MediaPath, "-resize", "512x512", "-background", "black", "-compose", "Copy", "-gravity", "center", "-extent", "512x512", "-quality", "92", task.MediaPath)
+	err := cmd.Run()
+	return err
+}
+
 func convertImage(task utils.ConvertTask) error {
 	// FIXME: converting to webp's 512x512 skews aspect ratio
 	// So Find a way to convert to 512x512 while maintaining perspective before cwebp convertion
 
 	// Convert Image to WebP
 	// Using https://developers.google.com/speed/webp/docs/cwebp
+	err := resizeImage(task)
+	if err != nil {
+		return err
+	}
 	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "512", "512", "-o", task.ConvertedPath)
-	err := cmd.Run()
+	err = cmd.Run()
 
 	return err
 }
