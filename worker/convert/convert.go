@@ -15,12 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const videoQuality = 35
-
 // 500kb
-const maxFileSize = 500000
-
-const animatableVideoLen = 1000000
+const maxVideoFileSize = 512000
 
 type ConvertConsumer struct {
 	PushTo *amqp.Queue
@@ -40,7 +36,7 @@ func (consumer *ConvertConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delive
 	case "image":
 		err = convertImage(task)
 	case "video":
-		err = convertVideo(task)
+		err = convertVideo(task, 60)
 	default:
 		return
 	}
@@ -71,17 +67,6 @@ func getImageDimensions(path string) (int, int) {
 	return width, height
 }
 
-func isAnimateable(path string) bool {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		log.Errorf("can not check if video length is animatable: %v", err)
-	}
-	if len(file) > animatableVideoLen {
-		return false
-	}
-	return true
-}
-
 // https://imagemagick.org/script/command-line-options.php#resize
 func resizeImage(task utils.ConvertTask) error {
 	cmd := *exec.Command("convert", task.MediaPath, "-resize", "512x512", "-background", "black", "-compose", "Copy", "-gravity", "center", "-extent", "512x512", "-quality", "92", task.MediaPath)
@@ -100,18 +85,20 @@ func convertImage(task utils.ConvertTask) error {
 	return err
 }
 
-func convertVideo(task utils.ConvertTask) error {
-	var qValue int
-	switch {
-	case task.DataLen < 350000:
-		qValue = 20
-	case task.DataLen < 650000:
-		qValue = 15
-	default:
-		qValue = 12
+func isTargetSize(path string) bool {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		log.Errorf("can not check if video length is animatable: %v", err)
 	}
-	log.Debugf("Q value is %d\n", qValue)
-	commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 512:512  %s", task.MediaPath, qValue, task.ConvertedPath)
+	if len(file) > maxVideoFileSize {
+		return false
+	}
+	return true
+}
+
+func convertVideo(task utils.ConvertTask, qValue int) error {
+	log.Infof("Q value is %d\n", qValue)
+	commandString := fmt.Sprintf("ffmpeg -i %s -fs %d  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 512:512  %s", task.MediaPath, maxVideoFileSize, qValue, task.ConvertedPath)
 	cmd := *exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
@@ -120,16 +107,12 @@ func convertVideo(task utils.ConvertTask) error {
 	err := cmd.Run()
 
 	// validate converted video is the right size
-	if !(isAnimateable(task.ConvertedPath)) {
-		log.Debugf("Reconverting video..\n")
-		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=512:512' -quality %d -y %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
-		cmd := *exec.Command("bash", "-c", commandString)
-		var outb, errb bytes.Buffer
-		cmd.Stdout = &outb
-		cmd.Stderr = &errb
-
-		err = cmd.Run()
-
+	// FIXME: Use libwep codec and specify file size directly?
+	//commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(512-iw)/2:(512-ih)/2:color=black' -quality %d -y %s", task.ConvertedPath, maxVideoFileSize, videoQuality, task.ConvertedPath)
+	if err == nil && !(isTargetSize(task.ConvertedPath)) {
+		log.Info("Reconverting video..\n")
+		os.Remove(task.ConvertedPath)
+		err = convertVideo(task, qValue-10)
 	}
 
 	return err
