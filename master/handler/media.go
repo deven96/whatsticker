@@ -15,7 +15,7 @@ import (
 )
 
 const whatsappErrorResponse = "Your %s size %dkb beyond conversion size %dkb"
-const headsUpVideoMessage = "Your video might take abit longer to stickerize"
+const headsUpVideoMessage = "Your video might take a bit longer to stickerize"
 
 type Media struct {
 	RawPath       string
