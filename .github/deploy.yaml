@@ -1,0 +1,33 @@
+name: remote ssh command
+on:
+  push:
+    branches: [main,setup-deployment]
+    tags:
+        - 'v*'
+jobs:
+  build:
+    name: Deploy Whatsticker to Server
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Executing remote ssh commands on server
+      uses: appleboy/ssh-action@v0.1.7
+      env:
+         RELEASE: ${{github.ref_name}}
+         WHATSTICKER_DIR: ./sandbox/testing/whatsticker/
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
+        envs: RELEASE,WHATSTICKER_DIR
+        script: |
+          cd  $WHATSTICKER_DIR
+          git reset --hard HEAD
+          git fetch --all --tags --prune
+          git checkout tags/$RELEASE
+          docker-compose down
+          docker-compose up --force-recreate --detach --restart unless-stopped
+
+
+                
