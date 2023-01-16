@@ -88,7 +88,7 @@ func convertImage(task utils.ConvertTask) error {
 func isTargetSize(path string) bool {
 	file, err := os.ReadFile(path)
 	if err != nil {
-		log.Errorf("can not check if video length is animatable: %v", err)
+		log.Errorf("cannot check if video length is animatable: %v", err)
 	}
 	if len(file) > maxVideoFileSize {
 		return false
