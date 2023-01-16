@@ -15,6 +15,7 @@ import (
 )
 
 const whatsappErrorResponse = "Your %s size %dkb beyond conversion size %dkb"
+const headsUpVideoMessage = "Your video might take a bit longer to stickerize"
 
 type Media struct {
 	RawPath       string
@@ -47,6 +48,24 @@ func (handler *Media) sizeLimit() int {
 	}
 }
 
+func (handler *Media) sendHeadsUpMessage() error {
+	message := handler.Message
+	infoMessage := whatsapp.TextResponse{
+		Response: whatsapp.Response{
+			To:      handler.Message.From,
+			Type:    "text",
+			Context: whatsapp.Context{MessageID: message.ID},
+		},
+		Text: whatsapp.Text{
+			Body: headsUpVideoMessage,
+		},
+	}
+	textbytes, _ := json.Marshal(&infoMessage)
+	whatsapp.SendMessage(textbytes, handler.PhoneNumberID)
+
+	return nil
+}
+
 func (handler *Media) Validate() error {
 	if handler == nil {
 		return errors.New("please initialize handler")
@@ -74,6 +93,13 @@ func (handler *Media) Validate() error {
 	}
 	handler.MediaURL = meta.URL
 	handler.Len = meta.FileSize
+
+	if handler.MediaType == "video" {
+		err = handler.sendHeadsUpMessage()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
