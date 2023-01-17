@@ -27,7 +27,7 @@ jobs:
           git fetch --all --tags --prune
           git checkout $RELEASE
           docker-compose down
-          docker-compose up --force-recreate --detach --restart unless-stopped
+          docker-compose up --force-recreate --detach
 
 
                 

@@ -16,7 +16,7 @@ x-common-variables: &common-variables
 services:
   whatsticker-lb:
     image: nginx:latest
-    restart: unless-stopped
+    restart: always
     ports:
       - "9000:80"
     volumes:
