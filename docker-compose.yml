@@ -10,8 +10,19 @@ x-common-variables: &common-variables
   SEND_WEBP_TO_WHATSAPP_QUEUE: complete
   LOG_METRIC_QUEUE : metric
   LOG_LEVEL : info
+  VERIFY_TOKEN: ${VERIFY_TOKEN}
+  BEARER_ACCESS_TOKEN: ${BEARER_ACCESS_TOKEN}
 
 services:
+  whatsticker-lb:
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - whatsticker-master
   whatsticker-master:
     build:
       context: "."
@@ -21,13 +32,15 @@ services:
       - rabbitmq
     command: bash -c "/wait && go run master/main.go -log-level DEBUG"
     volumes:
-      - type: bind
-        source: ./master/db
-        target: /project/master/db
-      - images:/project/master/images
-      - videos:/project/master/videos
+      - images:/project/images
+      - videos:/project/videos
     environment:
       <<: *common-variables
+    expose: 
+      - "9000"
+    deploy:
+      mode: replicated
+      replicas: 3
 
   whatsticker-worker:
     build:
@@ -39,8 +52,8 @@ services:
       - rabbitmq
     command: bash -c "/wait && go run worker/main.go"
     volumes:
-      - images:/project/master/images
-      - videos:/project/master/videos
+      - images:/project/images
+      - videos:/project/videos
     deploy:
       mode: replicated
       replicas: 3

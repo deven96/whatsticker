@@ -15,12 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const videoQuality = 35
-
-// 975kb
-const maxFileSize = 975000
-
-const animatableVideoLen = 1000000
+// 500kb
+const maxVideoFileSize = 512000
 
 type ConvertConsumer struct {
 	PushTo *amqp.Queue
@@ -40,18 +36,14 @@ func (consumer *ConvertConsumer) Consume(ch *amqp.Channel, delivery *amqp.Delive
 	case "image":
 		err = convertImage(task)
 	case "video":
-		err = convertVideo(task)
+		err = convertVideo(task, 60)
 	default:
 		return
 	}
-
 	if err != nil {
 		log.Errorf("Failed to Convert %s to WebP %s", task.MediaType, err)
 		return
 	}
-
-	//Function to Get file lenght
-
 	metadata.GenerateMetadata(task.ConvertedPath)
 	utils.PublishBytesToQueue(ch, consumer.PushTo, delivery.Body)
 
@@ -75,44 +67,38 @@ func getImageDimensions(path string) (int, int) {
 	return width, height
 }
 
-func isAnimateable(path string) bool {
+// https://imagemagick.org/script/command-line-options.php#resize
+func resizeImage(task utils.ConvertTask) error {
+	cmd := *exec.Command("convert", task.MediaPath, "-resize", "512x512", "-background", "black", "-compose", "Copy", "-gravity", "center", "-extent", "512x512", "-quality", "92", task.MediaPath)
+	err := cmd.Run()
+	return err
+}
 
+func convertImage(task utils.ConvertTask) error {
+	err := resizeImage(task)
+	if err != nil {
+		return err
+	}
+	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "512", "512", "-o", task.ConvertedPath)
+	err = cmd.Run()
+
+	return err
+}
+
+func isTargetSize(path string) bool {
 	file, err := os.ReadFile(path)
 	if err != nil {
-		log.Errorf("can not check if video length is animatable: %v", err)
+		log.Errorf("cannot check if video length is animatable: %v", err)
 	}
-	if len(file) > animatableVideoLen {
+	if len(file) > maxVideoFileSize {
 		return false
 	}
 	return true
 }
 
-func convertImage(task utils.ConvertTask) error {
-
-	// FIXME: converting to webp's 512x512 skews aspect ratio
-	// So Find a way to convert to 512x512 while maintaining perspective before cwebp convertion
-
-	// Convert Image to WebP
-	// Using https://developers.google.com/speed/webp/docs/cwebp
-	cmd := *exec.Command("cwebp", task.MediaPath, "-resize", "0", "600", "-o", task.ConvertedPath)
-	err := cmd.Run()
-
-	return err
-}
-
-func convertVideo(task utils.ConvertTask) error {
-
-	var qValue int
-	switch {
-	case task.DataLen < 350000:
-		qValue = 20
-	case task.DataLen < 650000:
-		qValue = 15
-	default:
-		qValue = 12
-	}
-	log.Debugf("Q value is %d\n", qValue)
-	commandString := fmt.Sprintf("ffmpeg -i %s  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 800:800  %s", task.MediaPath, qValue, task.ConvertedPath)
+func convertVideo(task utils.ConvertTask, qValue int) error {
+	log.Infof("Q value is %d\n", qValue)
+	commandString := fmt.Sprintf("ffmpeg -i %s -fs %d  -filter:v fps=fps=20 -compression_level 0 -q:v %d -loop 0 -preset picture -an -vsync 0 -s 512:512  %s", task.MediaPath, maxVideoFileSize, qValue, task.ConvertedPath)
 	cmd := *exec.Command("bash", "-c", commandString)
 	var outb, errb bytes.Buffer
 	cmd.Stdout = &outb
@@ -121,16 +107,12 @@ func convertVideo(task utils.ConvertTask) error {
 	err := cmd.Run()
 
 	// validate converted video is the right size
-	if !(isAnimateable(task.ConvertedPath)) {
-		log.Debugf("Reconverting video..\n")
-		commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'fps=20, scale=800:800' -quality %d -y %s", task.MediaPath, maxFileSize, videoQuality, task.ConvertedPath)
-		cmd := *exec.Command("bash", "-c", commandString)
-		var outb, errb bytes.Buffer
-		cmd.Stdout = &outb
-		cmd.Stderr = &errb
-
-		err = cmd.Run()
-
+	// FIXME: Use libwep codec and specify file size directly?
+	//commandString = fmt.Sprintf("ffmpeg -i %s -vcodec libwebp -fs %d -preset default -loop 0 -an -vsync 0 -vf 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(512-iw)/2:(512-ih)/2:color=black' -quality %d -y %s", task.ConvertedPath, maxVideoFileSize, videoQuality, task.ConvertedPath)
+	if err == nil && !(isTargetSize(task.ConvertedPath)) {
+		log.Info("Reconverting video..\n")
+		os.Remove(task.ConvertedPath)
+		err = convertVideo(task, qValue-10)
 	}
 
 	return err
