@@ -23,11 +23,11 @@ jobs:
         envs: RELEASE,WHATSTICKER_DIR
         script: |
           cd  $WHATSTICKER_DIR
+          docker-compose down
           git reset --hard HEAD
           git fetch --all --tags --prune
-          git checkout $RELEASE
-          docker-compose down
-          docker-compose up --force-recreate --detach
+          git checkout --force $RELEASE
+          docker-compose up --build --detach
 
 
                 
