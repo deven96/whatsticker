@@ -27,6 +27,7 @@ jobs:
           git reset --hard HEAD
           git fetch --all --tags --prune
           git checkout --force $RELEASE
+          git pull -f
           docker-compose up --build --detach
 
 
