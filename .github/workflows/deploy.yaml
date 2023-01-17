@@ -1,7 +1,7 @@
 name: remote ssh command
 on:
   push:
-    branches: [main,setup-deployment]
+    branches: [main]
     tags:
         - 'v*'
 jobs:
@@ -25,7 +25,7 @@ jobs:
           cd  $WHATSTICKER_DIR
           git reset --hard HEAD
           git fetch --all --tags --prune
-          git checkout tags/$RELEASE
+          git checkout $RELEASE
           docker-compose down
           docker-compose up --force-recreate --detach --restart unless-stopped
 
