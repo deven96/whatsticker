@@ -31,6 +31,10 @@ jobs:
           git checkout --force $RELEASE
           git pull -f
           docker-compose up --build --detach
+          until $(curl --output /dev/null --silent --head --fail http://localhost:9000); do
+            printf 'waiting for whatsticker to come up'
+            sleep 5
+          done
           echo "$PASSWORD" | sudo -S nginx -s reload
 
                 
