@@ -1,6 +1,8 @@
 # Whatsticker
 
 <p align="left"><img src="assets/logo.jpg" alt="mythra" height="100px"></p>
+[![Release Pipeline](https://github.com/deven96/whatsticker/actions/workflows/deploy.yml/badge.svg)](https://github.com/deven96/whatsticker/actions/workflows/deploy.yml)
+[![Production](https://img.shields.io/endpoint?url=https://www.whatsticker.xyz&style=plastic)](https://whatsticker.xyz)
 A Whatsapp bot that turns pictures, small videos and gifs into stickers
 
 

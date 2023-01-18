@@ -45,6 +45,11 @@ func (i *incomingMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	handler.Run(parsed, ch, convertQueue, loggingQueue)
 }
 
+func liveness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"schemaVersion": 1,"label": "whatsticker","message": "alive","color": "green"}`))
+}
+
 func main() {
 	masterDir, _ := filepath.Abs("./master")
 	logLevel := flag.String("log-level", "INFO", "Set log level to one of (INFO/DEBUG)")
@@ -99,6 +104,7 @@ func main() {
 		}
 	}()
 	http.Handle("/incoming", &incomingMessageHandler{})
+	http.Handle("/", http.HandlerFunc(liveness))
 	if err := http.ListenAndServe(":"+*port, nil); err != nil {
 		log.Errorf("Could not start server on %s", *port)
 	} else {
