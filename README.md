@@ -17,7 +17,7 @@ https://user-images.githubusercontent.com/23453888/172902050-7e039696-2b31-469f-
 
 ### Simple Requirements
 
-If you are not interested in running a copy of the project then feel free to use the whatsticker number provided. You can also add it to group chats and it will work the exact same way. There might be occasional downtime but except it gets blocked it should be pretty reliable
+If you are not interested in running a copy of the project then feel free to use the whatsticker number provided. You can only send private messages and it cannot be added to group chats
 
 ### Technical Requirements
 
