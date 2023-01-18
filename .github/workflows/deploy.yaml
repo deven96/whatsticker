@@ -15,6 +15,7 @@ jobs:
          RELEASE: ${{github.ref_name}}
          BEARER_ACCESS_TOKEN: ${{ secrets.BEARER_ACCESS_TOKEN }}
          VERIFY_TOKEN: ${{ secrets.VERIFY_TOKEN }}
+         VERIFY_TOKEN: ${{ secrets.VERIFY_TOKEN }}
          WHATSTICKER_DIR: ./sandbox/testing/whatsticker/
       with:
         host: ${{ secrets.HOST }}
@@ -30,6 +31,6 @@ jobs:
           git checkout --force $RELEASE
           git pull -f
           docker-compose up --build --detach
-          echo ${{ secrets.PASSWORD }} | sudo -S nginx -s reload
+          echo "${{ secrets.PASSWORD }}" | sudo -S nginx -s reload
 
                 
