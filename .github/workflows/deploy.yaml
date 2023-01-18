@@ -1,7 +1,6 @@
 name: remote ssh command
 on:
   push:
-    branches: [main]
     tags:
         - 'v*'
 jobs:
