@@ -30,7 +30,6 @@ jobs:
           git checkout --force $RELEASE
           git pull -f
           docker-compose up --build --detach
-          sudo nginx -s reload
-
+          echo ${{ secrets.PASSWORD }} | sudo -S nginx -s reload
 
                 
