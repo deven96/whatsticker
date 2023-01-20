@@ -8,7 +8,7 @@
 A Whatsapp bot that turns pictures, small videos and gifs into stickers
 
 
-[Chat with Whatsticker](https://wa.me/15550089659)
+[Chat with Whatsticker](https://wa.me/13135469852)
 
 
 ## Usage
@@ -53,7 +53,7 @@ If you are not interested in running a copy of the project then feel free to use
   export BEARER_ACCESS_TOKEN=<xxxxxxx>
   ```
  - Run `docker-compose up`.
- - In development you have to [add your number to the test numbers in the app](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started/add-a-phone-number/) (or just [message the running bot in production](https://wa.me/15550089659))
+ - In development you have to [add your number to the test numbers in the app](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started/add-a-phone-number/) (or just [message the running bot in production](https://wa.me/13135469852))
  - Send media in chat and bot should respond with sticker
 
 
